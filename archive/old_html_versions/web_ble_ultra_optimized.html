@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32S3 Ultra-High Performance Camera & Audio Stream</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .performance-badge {
+            display: inline-block;
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .performance-monitor {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .performance-btn {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            font-weight: bold;
+        }
+
+        .frame-display {
+            position: relative;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .frame-display img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .log-container {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 ESP32S3 Ultra-High Performance Stream</h1>
+            <p>BLE 5.0 + Data Length Extension + 517-byte MTU + 7.5ms Intervals</p>
+            <div class="performance-badge">⚡ ULTRA SPEED MODE ⚡</div>
+        </div>
+
+        <!-- Performance Monitor -->
+        <div class="performance-monitor">
+            <div class="metric-card">
+                <div class="metric-value" id="bandwidthValue">0</div>
+                <div class="metric-label">kbps</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="fpsValue">0</div>
+                <div class="metric-label">FPS</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="frameCount">0</div>
+                <div class="metric-label">Frames</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="mtuValue">-</div>
+                <div class="metric-label">MTU</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+            <button id="connectBtn">Connect to ESP32S3</button>
+            <button id="startFramesBtn" disabled>▶️ Start Streaming</button>
+            <button id="stopFramesBtn" disabled>⏹️ Stop Streaming</button>
+            <button id="captureBtn" disabled>📷 Capture Photo</button>
+            <button class="performance-btn" id="performanceModeBtn" disabled>🚀 Ultra Performance Mode</button>
+            <button id="statusBtn" disabled>📊 Get Status</button>
+        </div>
+
+        <!-- Settings Panel -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
+            <div>
+                <label style="color: white; font-weight: bold;">Frame Interval: <span id="intervalValue">0.033</span>s (<span id="fpsDisplay">30</span> FPS)</label>
+                <input type="range" id="intervalSlider" min="0.02" max="2" step="0.001" value="0.033" disabled style="width: 100%; margin-top: 5px;">
+            </div>
+            <div>
+                <label style="color: white; font-weight: bold;">Quality: <span id="qualityValue">25</span></label>
+                <input type="range" id="qualitySlider" min="4" max="63" value="25" disabled style="width: 100%; margin-top: 5px;">
+            </div>
+            <div>
+                <label style="color: white; font-weight: bold;">Resolution:</label>
+                <select id="resolutionSelect" disabled style="width: 100%; margin-top: 5px; padding: 5px;">
+                    <option value="1">QQVGA (160x120)</option>
+                    <option value="5" selected>QVGA (320x240)</option>
+                    <option value="6">CIF (400x296)</option>
+                    <option value="7">HVGA (480x320)</option>
+                    <option value="8">VGA (640x480)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Image Display -->
+        <div class="frame-display" id="frameDisplay">
+            <div>🚀 Ultra-High Performance Mode Ready<br>Connect to ESP32S3 for 400-600+ kbps streaming</div>
+        </div>
+
+        <!-- Log -->
+        <div class="log-container" id="logContainer">
+            <div>🚀 ESP32S3 Ultra-High Performance Client initialized</div>
+            <div>⚡ BLE 5.0 Data Length Extension support enabled</div>
+            <div>📡 Ready for 517-byte MTU and 510-byte chunks</div>
+            <div>🎯 Target performance: 400-600+ kbps, 25-30 FPS</div>
+        </div>
+    </div>
+
+    <script>
+        // BLE UUIDs
+        const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
+        const CONTROL_CHAR_UUID = '87654321-4321-4321-4321-cba987654321';
+        const FRAME_CHAR_UUID = '44444444-5555-6666-7777-888888888888';
+
+        // Global variables
+        let device = null;
+        let server = null;
+        let service = null;
+        let controlCharacteristic = null;
+        let frameCharacteristic = null;
+
+        // Image processing variables - OPTIMIZED FOR 510-BYTE CHUNKS
+        let imageBuffer = null;
+        let expectedChunks = 0;
+        let expectedSize = 0;
+        let receivedChunks = 0;
+        const MAX_CHUNK_SIZE = 510; // Updated to match ESP32 optimization
+
+        // Performance monitoring
+        let frameCounter = 0;
+        let totalBytesReceived = 0;
+        let lastUpdateTime = Date.now();
+        let lastBytesReceived = 0;
+        let lastFrameCount = 0;
+        let currentMTU = 0;
+        let ultraPerformanceMode = false;
+        let frameStartTime = 0;
+        let imageTimeout = null;
+        let currentFrame = null;
+
+        function log(message) {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            logContainer.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Enhanced performance monitoring
+        function updatePerformanceMetrics() {
+            const now = Date.now();
+            const timeDiff = (now - lastUpdateTime) / 1000;
+            
+            if (timeDiff > 0) {
+                // Calculate bandwidth (should now show 400-600+ kbps)
+                const bitsReceived = (totalBytesReceived - lastBytesReceived) * 8;
+                const currentBandwidth = bitsReceived / timeDiff;
+                
+                // Calculate FPS (should now achieve 25-30 FPS)
+                const framesDiff = frameCounter - lastFrameCount;
+                const currentFPS = framesDiff / timeDiff;
+                
+                // Update displays
+                document.getElementById('bandwidthValue').textContent = (currentBandwidth / 1000).toFixed(1);
+                document.getElementById('fpsValue').textContent = currentFPS.toFixed(1);
+                document.getElementById('frameCount').textContent = frameCounter;
+                document.getElementById('mtuValue').textContent = currentMTU || '-';
+                
+                lastUpdateTime = now;
+                lastBytesReceived = totalBytesReceived;
+                lastFrameCount = frameCounter;
+            }
+        }
+
+        // Enhanced BLE connection with DLE support
+        async function connectToBLE() {
+            try {
+                log('🔍 Scanning for ESP32S3 ultra-performance devices...');
+                
+                // Try multiple discovery methods
+                const requestOptions = {
+                    filters: [
+                        { services: [SERVICE_UUID] },
+                        { name: "ESP32S3-Camera" },
+                        { namePrefix: "ESP32S3" }
+                    ],
+                    optionalServices: [SERVICE_UUID]
+                };
+
+                // Fallback to accept all devices if specific filtering fails
+                try {
+                    device = await navigator.bluetooth.requestDevice(requestOptions);
+                } catch (firstError) {
+                    log('🔍 Trying broader search...');
+                    device = await navigator.bluetooth.requestDevice({
+                        acceptAllDevices: true,
+                        optionalServices: [SERVICE_UUID]
+                    });
+                }
+
+                log('📱 Device found: ' + (device.name || 'Unknown'));
+                
+                server = await device.gatt.connect();
+                log('🔗 Connected to GATT server');
+                
+                // Wait for connection to stabilize
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Log MTU information for DLE
+                if (server.mtu) {
+                    currentMTU = server.mtu;
+                    log(`📡 MTU: ${currentMTU} bytes (DLE ${currentMTU > 23 ? 'ENABLED' : 'DISABLED'})`);
+                }
+
+                log('🔧 Getting BLE service...');
+                service = await server.getPrimaryService(SERVICE_UUID);
+                
+                log('📝 Getting characteristics...');
+                controlCharacteristic = await service.getCharacteristic(CONTROL_CHAR_UUID);
+                frameCharacteristic = await service.getCharacteristic(FRAME_CHAR_UUID);
+
+                log('🔔 Starting notifications...');
+                await frameCharacteristic.startNotifications();
+                frameCharacteristic.addEventListener('characteristicvaluechanged', handleFrameData, { passive: true });
+
+                // Add disconnection handler
+                device.addEventListener('gattserverdisconnected', handleDisconnection);
+
+                log('🎉 Successfully connected to ESP32S3 Ultra-Performance Mode!');
+                log(`⚡ Ready for 517-byte MTU and ${MAX_CHUNK_SIZE}-byte chunks`);
+
+                enableControls();
+
+                // Start performance monitoring
+                setInterval(updatePerformanceMetrics, 1000);
+
+            } catch (error) {
+                log('❌ Connection failed: ' + error.message);
+                
+                // Additional debugging info
+                if (error.message.includes('No devices found')) {
+                    log('💡 Make sure ESP32S3 is powered on and advertising');
+                    log('💡 Try restarting the ESP32S3 device');
+                }
+            }
+        }
+
+        function handleDisconnection() {
+            log('📴 Device disconnected');
+            device = null;
+            server = null;
+            service = null;
+            controlCharacteristic = null;
+            frameCharacteristic = null;
+            currentMTU = 0;
+            
+            // Disable all controls
+            const controls = ['startFramesBtn', 'stopFramesBtn', 'captureBtn', 'statusBtn', 
+                            'performanceModeBtn', 'intervalSlider', 'qualitySlider', 'resolutionSelect'];
+            controls.forEach(id => {
+                document.getElementById(id).disabled = true;
+            });
+        }
+
+        async function sendCommand(command) {
+            if (!controlCharacteristic) return;
+            try {
+                const encoder = new TextEncoder();
+                await controlCharacteristic.writeValue(encoder.encode(command));
+                log('📤 Sent: ' + command);
+            } catch (error) {
+                log('❌ Command failed: ' + error.message);
+            }
+        }
+
+        function handleFrameData(event) {
+            const data = new Uint8Array(event.target.value.buffer);
+            totalBytesReceived += data.length;
+            
+            // Debug all incoming data
+            if (data.length > 0) {
+                if (!ultraPerformanceMode || frameCounter % 20 === 0) {
+                    log(`Received frame data: ${data.length} bytes, type: 0x${data[0].toString(16).padStart(2, '0')}`);
+                }
+            }
+
+            if (data[0] === 0x01) { // Start header
+                // ESP32 header: [type][chunks_hi][chunks_lo][size_b0][size_b1][size_b2][size_b3]
+                const chunks = (data[1] << 8) | data[2];
+                const size = data[3] | (data[4] << 8) | (data[5] << 16) | (data[6] << 24); // Little-endian
+                
+                expectedChunks = chunks;
+                expectedSize = size;
+                receivedChunks = 0;
+                imageBuffer = new Uint8Array(size);
+                frameStartTime = performance.now();
+                
+                if (!ultraPerformanceMode) {
+                    log(`📋 Starting frame: ${size} bytes (${chunks} chunks) @ ${MAX_CHUNK_SIZE}B`);
+                }
+                
+                // Set timeout for frame reception
+                if (imageTimeout) clearTimeout(imageTimeout);
+                imageTimeout = setTimeout(() => {
+                    if (!ultraPerformanceMode) {
+                        log(`⏰ Frame timeout! Only received ${receivedChunks}/${expectedChunks} chunks`);
+                    }
+                    imageBuffer = null;
+                }, ultraPerformanceMode ? 3000 : 8000);
+            }
+            else if (data[0] === 0x02) { // Data chunk - OPTIMIZED FOR 510-BYTE CHUNKS
+                if (!imageBuffer) return;
+
+                const chunkIndex = (data[1] << 8) | data[2];
+                const chunkData = data.slice(3);
+                
+                // Calculate offset based on 510-byte chunks (ESP32 optimization)
+                const offset = chunkIndex * MAX_CHUNK_SIZE;
+                
+                // Debug first few chunks
+                if (receivedChunks < 3 && !ultraPerformanceMode) {
+                    log(`Chunk ${chunkIndex}: ${chunkData.length} bytes at offset ${offset}`);
+                }
+                
+                if (offset + chunkData.length <= imageBuffer.length) {
+                    imageBuffer.set(chunkData, offset);
+                    receivedChunks++;
+                    
+                    // Auto-display when all chunks received (fallback if end marker is missing)
+                    if (receivedChunks === expectedChunks) {
+                        if (!ultraPerformanceMode) {
+                            log(`🎯 All chunks received! Auto-displaying...`);
+                        }
+                        displayImageOptimized(imageBuffer);
+                        frameCounter++;
+                        updateFrameInfo(expectedSize);
+                        
+                        // Reset for next frame
+                        imageBuffer = null;
+                        if (imageTimeout) {
+                            clearTimeout(imageTimeout);
+                            imageTimeout = null;
+                        }
+                    }
+                } else {
+                    if (!ultraPerformanceMode) {
+                        log(`❌ Chunk ${chunkIndex} out of bounds: offset ${offset}, size ${chunkData.length}`);
+                    }
+                }
+            }
+            else if (data[0] === 0x03) { // End marker
+                const totalChunks = (data[1] << 8) | data[2];
+                
+                if (!ultraPerformanceMode) {
+                    log(`🏁 Frame completion: ${receivedChunks}/${expectedChunks} chunks`);
+                }
+                
+                // Clear timeout
+                if (imageTimeout) {
+                    clearTimeout(imageTimeout);
+                    imageTimeout = null;
+                }
+
+                // More lenient completion check - if we have most of the data, display it
+                const completionThreshold = 0.95; // 95% of chunks received
+                if (imageBuffer && receivedChunks >= expectedChunks * completionThreshold) {
+                    const transferTime = performance.now() - frameStartTime;
+                    displayImageOptimized(imageBuffer);
+                    frameCounter++;
+                    updateFrameInfo(expectedSize);
+                    
+                    if (!ultraPerformanceMode || frameCounter % 10 === 0) {
+                        const speed = (expectedSize * 8 / transferTime).toFixed(0); // kbps
+                        log(`✅ Frame #${frameCounter}: ${expectedSize}B in ${transferTime.toFixed(1)}ms (${speed} kbps)`);
+                    }
+                } else {
+                    if (!ultraPerformanceMode) {
+                        log(`❌ Frame incomplete: ${((receivedChunks/expectedChunks)*100).toFixed(1)}% received`);
+                    }
+                }
+
+                imageBuffer = null;
+            }
+        }
+
+        // Optimized image display
+        let imageUpdatePending = false;
+        function displayImageOptimized(imageData) {
+            if (!imageUpdatePending) {
+                imageUpdatePending = true;
+                requestAnimationFrame(() => {
+                    const blob = new Blob([imageData], { type: 'image/jpeg' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    document.getElementById('frameDisplay').innerHTML = `<img src="${url}" alt="ESP32S3 Ultra-Speed">`;
+                    
+                    setTimeout(() => URL.revokeObjectURL(url), 500);
+                    imageUpdatePending = false;
+                });
+            }
+            
+            // Store current frame for saving
+            currentFrame = imageData;
+        }
+
+        function updateFrameInfo(size) {
+            const sizeKB = (size / 1024).toFixed(1);
+            log(`Frame ${frameCounter}: ${sizeKB}KB displayed`);
+        }
+
+        // Ultra-performance mode toggle
+        function toggleUltraPerformanceMode() {
+            ultraPerformanceMode = !ultraPerformanceMode;
+            const btn = document.getElementById('performanceModeBtn');
+            
+            if (ultraPerformanceMode) {
+                btn.textContent = '🔥 ULTRA MODE ACTIVE';
+                btn.style.background = 'linear-gradient(45deg, #ff4757, #ff3838)';
+                sendCommand('INTERVAL:0.02'); // 50 FPS mode
+                log('🔥 ULTRA PERFORMANCE MODE ACTIVATED - 50 FPS TARGET');
+            } else {
+                btn.textContent = '🚀 Ultra Performance Mode';
+                btn.style.background = 'linear-gradient(45deg, #ff6b6b, #feca57)';
+                sendCommand('INTERVAL:0.033'); // 30 FPS mode
+                log('⚡ Standard high-performance mode - 30 FPS');
+            }
+        }
+
+        // Additional control functions
+        async function captureImage() {
+            if (await sendCommand('CAPTURE')) {
+                log('📷 High-resolution image capture requested');
+            }
+        }
+
+        async function updateInterval(value) {
+            const floatVal = parseFloat(value);
+            const fps = (1 / floatVal).toFixed(1);
+            document.getElementById('intervalValue').textContent = floatVal.toFixed(3);
+            document.getElementById('fpsDisplay').textContent = fps;
+            if (await sendCommand(`INTERVAL:${floatVal.toFixed(3)}`)) {
+                log(`⏱️ Frame interval: ${floatVal.toFixed(3)}s (${fps} FPS)`);
+            }
+        }
+
+        async function updateQuality(value) {
+            document.getElementById('qualityValue').textContent = value;
+            if (await sendCommand(`QUALITY:${value}`)) {
+                log(`🎨 Image quality: ${value}`);
+            }
+        }
+
+        async function updateResolution(value) {
+            if (await sendCommand(`SIZE:${value}`)) {
+                const sizes = {1: 'QQVGA (160x120)', 5: 'QVGA (320x240)', 6: 'CIF (400x296)', 7: 'HVGA (480x320)', 8: 'VGA (640x480)'};
+                log(`📐 Resolution: ${sizes[value]}`);
+            }
+        }
+
+        function enableControls() {
+            const controls = ['startFramesBtn', 'stopFramesBtn', 'captureBtn', 'statusBtn', 
+                            'performanceModeBtn', 'intervalSlider', 'qualitySlider', 'resolutionSelect'];
+            controls.forEach(id => {
+                document.getElementById(id).disabled = false;
+            });
+        }
+
+        // Event listeners
+        document.getElementById('connectBtn').addEventListener('click', connectToBLE);
+        document.getElementById('startFramesBtn').addEventListener('click', () => sendCommand('START_FRAMES'));
+        document.getElementById('stopFramesBtn').addEventListener('click', () => sendCommand('STOP_FRAMES'));
+        document.getElementById('captureBtn').addEventListener('click', captureImage);
+        document.getElementById('statusBtn').addEventListener('click', () => sendCommand('STATUS'));
+        document.getElementById('performanceModeBtn').addEventListener('click', toggleUltraPerformanceMode);
+        
+        // Settings event listeners
+        document.getElementById('intervalSlider').addEventListener('input', (e) => updateInterval(e.target.value));
+        document.getElementById('qualitySlider').addEventListener('input', (e) => updateQuality(e.target.value));
+        document.getElementById('resolutionSelect').addEventListener('change', (e) => updateResolution(e.target.value));
+
+        log('🚀 ESP32S3 Ultra-High Performance Client ready');
+        log('🎯 Target: 400-600+ kbps, 25-30 FPS with 517-byte MTU');
+        log('⚡ Click "Connect to ESP32S3" to start ultra-speed streaming');
+    </script>
+</body>
+</html> 

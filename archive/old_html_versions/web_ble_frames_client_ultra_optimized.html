@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32S3 Ultra-High Performance Camera & Audio Stream</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .performance-badge {
+            display: inline-block;
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .connection-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .status-card.connected {
+            border-color: #28a745;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .status-card.disconnected {
+            border-color: #dc3545;
+            background: linear-gradient(45deg, #dc3545, #fd7e14);
+            color: white;
+        }
+
+        .status-excellent {
+            background: linear-gradient(45deg, #28a745, #20c997) !important;
+            color: white !important;
+            border-color: #28a745 !important;
+        }
+
+        .status-good {
+            background: linear-gradient(45deg, #ffc107, #fd7e14) !important;
+            color: white !important;
+            border-color: #ffc107 !important;
+        }
+
+        .performance-monitor {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-group {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+        }
+
+        .control-group h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .performance-btn {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            font-weight: bold;
+        }
+
+        .performance-btn:hover {
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .frame-display {
+            position: relative;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .frame-display img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .frame-placeholder {
+            color: #666;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        .progress-container {
+            margin: 15px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .settings-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .setting-item label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .setting-item select,
+        .setting-item input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .audio-visualizer {
+            display: flex;
+            align-items: end;
+            height: 60px;
+            gap: 2px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .audio-bar {
+            background: linear-gradient(to top, #667eea, #764ba2);
+            width: 8px;
+            min-height: 2px;
+            border-radius: 4px 4px 0 0;
+            transition: height 0.1s ease;
+        }
+
+        .log-container {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+
+        .log-container div {
+            margin-bottom: 5px;
+        }
+
+        .dle-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 ESP32S3 Ultra-High Performance Stream</h1>
+            <p>BLE 5.0 + Data Length Extension + 517-byte MTU + 7.5ms Intervals</p>
+            <div class="performance-badge">⚡ ULTRA SPEED MODE ⚡</div>
+        </div>
+
+        <!-- Performance Monitor -->
+        <div class="performance-monitor">
+            <div class="metric-card">
+                <div class="metric-value" id="bandwidthValue">0</div>
+                <div class="metric-label">kbps</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="fpsValue">0</div>
+                <div class="metric-label">FPS</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="frameCount">0</div>
+                <div class="metric-label">Frames</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="mtuValue">-</div>
+                <div class="metric-label">MTU</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="chunkSize">510</div>
+                <div class="metric-label">Chunk Size</div>
+            </div>
+            <div class="metric-card" id="performanceStatus">
+                <div class="metric-value">⏳</div>
+                <div class="metric-label">Performance</div>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="connection-status">
+            <div class="status-card disconnected" id="bleStatus">
+                <h3>📱 BLE Status</h3>
+                <p id="bleStatusText">Disconnected</p>
+                <small id="deviceInfoText">No device connected</small>
+                <div class="dle-indicator" style="display: none;" id="dleIndicator">DLE Active</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-group">
+                <h3>🔗 Connection</h3>
+                <button id="connectBtn">Connect to ESP32S3</button>
+                <button id="statusBtn" disabled>Get Status</button>
+                <button class="performance-btn" id="performanceModeBtn" disabled>🚀 Ultra Performance Mode</button>
+            </div>
+
+            <div class="control-group">
+                <h3>📸 Camera Control</h3>
+                <button id="captureBtn" disabled>📷 Capture Image</button>
+                <button id="startFramesBtn" disabled>▶️ Start Streaming</button>
+                <button id="stopFramesBtn" disabled>⏹️ Stop Streaming</button>
+            </div>
+
+            <div class="control-group">
+                <h3>🎵 Audio Control</h3>
+                <button id="startAudioBtn" disabled>🎤 Start Audio</button>
+                <button id="stopAudioBtn" disabled>🔇 Stop Audio</button>
+                <div class="audio-visualizer" id="audioVisualizer"></div>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="control-group">
+            <h3>⚙️ Camera Settings</h3>
+            <div class="settings-panel">
+                <div class="setting-item">
+                    <label for="resolutionSelect">Resolution:</label>
+                    <select id="resolutionSelect" disabled>
+                        <option value="5">QVGA (320x240)</option>
+                        <option value="6">CIF (400x296)</option>
+                        <option value="7">HVGA (480x320)</option>
+                        <option value="8">VGA (640x480)</option>
+                        <option value="9">SVGA (800x600)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label for="qualitySlider">JPEG Quality: <span id="qualityValue">25</span></label>
+                    <input type="range" id="qualitySlider" min="4" max="63" value="25" disabled>
+                </div>
+                <div class="setting-item">
+                    <label for="intervalSlider">Frame Interval: <span id="intervalValue">0.033</span>s (<span id="fpsDisplay">30</span> FPS)</label>
+                    <input type="range" id="intervalSlider" min="0.02" max="2" step="0.001" value="0.033" disabled>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Display -->
+        <div class="frame-display" id="frameDisplay">
+            <div class="frame-placeholder">
+                🚀 Ultra-High Performance Mode Ready<br>
+                Connect to ESP32S3 to start streaming at up to 600+ kbps
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Ready for ultra-speed transfer...</div>
+        </div>
+
+        <!-- Log -->
+        <div class="log-container" id="logContainer">
+            <div>🚀 ESP32S3 Ultra-High Performance Client initialized</div>
+            <div>⚡ BLE 5.0 Data Length Extension support enabled</div>
+            <div>📡 Ready for 517-byte MTU and 7.5ms connection intervals</div>
+            <div>🎯 Target performance: 400-600+ kbps, 25-30 FPS</div>
+        </div>
+    </div>
+
+    <script>
+        // BLE UUIDs
+        const SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
+        const CONTROL_CHAR_UUID = '87654321-4321-4321-4321-cba987654321';
+        const STATUS_CHAR_UUID = '11111111-2222-3333-4444-555555555555';
+        const IMAGE_CHAR_UUID = '22222222-3333-4444-5555-666666666666';
+        const FRAME_CHAR_UUID = '44444444-5555-6666-7777-888888888888';
+        const AUDIO_CHAR_UUID = '33333333-4444-5555-6666-777777777777';
+
+        // Global variables
+        let device = null;
+        let server = null;
+        let service = null;
+        let controlCharacteristic = null;
+        let statusCharacteristic = null;
+        let imageCharacteristic = null;
+        let frameCharacteristic = null;
+        let audioCharacteristic = null;
+
+        // Image processing variables - OPTIMIZED FOR 510-BYTE CHUNKS
+        let imageBuffer = null;
+        let expectedChunks = 0;
+        let expectedSize = 0;
+        let receivedChunks = 0;
+        let imageTimeout = null;
+        const MAX_CHUNK_SIZE = 510; // Updated to match ESP32 optimization
+
+        // Audio variables
+        let audioContext = null;
+        let analyser = null;
+        let dataArray = null;
+        let audioQueue = [];
+
+        // Performance monitoring variables
+        let frameCounter = 0;
+        let totalBytesReceived = 0;
+        let lastUpdateTime = Date.now();
+        let lastBytesReceived = 0;
+        let lastFrameCount = 0;
+        let performanceUpdatePending = false;
+        let currentMTU = 0;
+
+        // Ultra-performance mode variables
+        let ultraPerformanceMode = false;
+        let frameStartTime = 0;
+
+        // Initialize audio visualizer
+        function initAudioVisualizer() {
+            const visualizer = document.getElementById('audioVisualizer');
+            for (let i = 0; i < 32; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'audio-bar';
+                visualizer.appendChild(bar);
+            }
+        }
+
+        // Optimized logging with reduced frequency
+        let logCount = 0;
+        function log(message) {
+            logCount++;
+            // Reduce logging frequency in ultra-performance mode
+            if (ultraPerformanceMode && logCount % 10 !== 0) return;
+            
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            logContainer.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Enhanced connection status with performance indicators
+        function updateConnectionStatus(connected, info = '') {
+            const bleStatus = document.getElementById('bleStatus');
+            const bleStatusText = document.getElementById('bleStatusText');
+            const deviceInfo = document.getElementById('deviceInfoText');
+            
+            if (connected) {
+                bleStatus.className = 'status-card connected';
+                bleStatusText.textContent = 'Connected';
+                deviceInfo.textContent = info || 'ESP32S3 Ultra-Speed Camera';
+                
+                // Show DLE indicator if MTU > 23
+                if (currentMTU > 23) {
+                    document.getElementById('dleIndicator').style.display = 'block';
+                }
+            } else {
+                bleStatus.className = 'status-card disconnected';
+                bleStatusText.textContent = 'Disconnected';
+                deviceInfo.textContent = 'No device connected';
+                document.getElementById('dleIndicator').style.display = 'none';
+            }
+
+            // Enable/disable controls
+            const controls = ['statusBtn', 'captureBtn', 'startFramesBtn', 'stopFramesBtn', 
+                            'startAudioBtn', 'stopAudioBtn', 'resolutionSelect', 
+                            'qualitySlider', 'intervalSlider', 'performanceModeBtn'];
+            controls.forEach(id => {
+                document.getElementById(id).disabled = !connected;
+            });
+        }
+
+        // Enhanced performance monitoring
+        function updatePerformanceMetrics() {
+            if (performanceUpdatePending) return;
+            performanceUpdatePending = true;
+            
+            requestAnimationFrame(() => {
+                const now = Date.now();
+                const timeDiff = (now - lastUpdateTime) / 1000;
+                
+                if (timeDiff > 0) {
+                    // Calculate bandwidth (should now show 400-600+ kbps)
+                    const bitsReceived = (totalBytesReceived - lastBytesReceived) * 8;
+                    const currentBandwidth = bitsReceived / timeDiff;
+                    
+                    // Calculate FPS (should now achieve 25-30 FPS)
+                    const framesDiff = frameCounter - lastFrameCount;
+                    const currentFPS = framesDiff / timeDiff;
+                    
+                    // Update displays
+                    document.getElementById('bandwidthValue').textContent = (currentBandwidth / 1000).toFixed(1);
+                    document.getElementById('fpsValue').textContent = currentFPS.toFixed(1);
+                    document.getElementById('frameCount').textContent = frameCounter;
+                    document.getElementById('mtuValue').textContent = currentMTU || '-';
+                    
+                    // Performance status with enhanced thresholds
+                    const performanceStatus = document.getElementById('performanceStatus');
+                    if (currentBandwidth > 500000) { // > 500 kbps
+                        performanceStatus.className = 'metric-card status-excellent';
+                        performanceStatus.querySelector('.metric-value').textContent = '🚀';
+                        performanceStatus.querySelector('.metric-label').textContent = 'Ultra Speed';
+                    } else if (currentBandwidth > 350000) { // > 350 kbps
+                        performanceStatus.className = 'metric-card status-good';
+                        performanceStatus.querySelector('.metric-value').textContent = '⚡';
+                        performanceStatus.querySelector('.metric-label').textContent = 'High Speed';
+                    } else {
+                        performanceStatus.className = 'metric-card';
+                        performanceStatus.querySelector('.metric-value').textContent = '📊';
+                        performanceStatus.querySelector('.metric-label').textContent = 'Standard';
+                    }
+                    
+                    lastUpdateTime = now;
+                    lastBytesReceived = totalBytesReceived;
+                    lastFrameCount = frameCounter;
+                }
+                
+                performanceUpdatePending = false;
+            });
+        }
+
+        // Show/hide progress
+        function showImageProgress() {
+            document.getElementById('progressContainer').style.display = 'block';
+        }
+
+        function hideImageProgress() {
+            document.getElementById('progressContainer').style.display = 'none';
+        }
+
+        function updateProgress(received, total) {
+            const percentage = (received / total) * 100;
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = 
+                `Ultra-speed transfer: ${received}/${total} chunks (${percentage.toFixed(1)}%) @ ${MAX_CHUNK_SIZE}B/chunk`;
+        }
+
+        // Enhanced BLE connection with DLE support
+        async function connectToBLE() {
+            try {
+                log('🔍 Scanning for ESP32S3 ultra-performance devices...');
+                
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'ESP32S3-Camera' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                log('📱 Device found: ' + device.name);
+                
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+                
+                server = await device.gatt.connect();
+                log('🔗 Connected to GATT server');
+                
+                // Log MTU information for DLE
+                if (server.mtu) {
+                    currentMTU = server.mtu;
+                    log(`📡 MTU: ${currentMTU} bytes (DLE ${currentMTU > 23 ? 'ENABLED' : 'DISABLED'})`);
+                    document.getElementById('mtuValue').textContent = currentMTU;
+                }
+
+                service = await server.getPrimaryService(SERVICE_UUID);
+                log('🔧 Service found');
+
+                // Get all characteristics with enhanced error handling
+                try {
+                    controlCharacteristic = await service.getCharacteristic(CONTROL_CHAR_UUID);
+                    statusCharacteristic = await service.getCharacteristic(STATUS_CHAR_UUID);
+                    imageCharacteristic = await service.getCharacteristic(IMAGE_CHAR_UUID);
+                    frameCharacteristic = await service.getCharacteristic(FRAME_CHAR_UUID);
+                    audioCharacteristic = await service.getCharacteristic(AUDIO_CHAR_UUID);
+                    log('✅ All characteristics found');
+                } catch (error) {
+                    log('❌ Failed to get characteristics: ' + error.message);
+                    return;
+                }
+
+                // Start notifications with passive event listeners for performance
+                await setupNotifications();
+
+                log('🎉 Successfully connected to ESP32S3 Ultra-Performance Mode!');
+                log(`⚡ Ready for 517-byte MTU and ${MAX_CHUNK_SIZE}-byte chunks`);
+                updateConnectionStatus(true, 'ESP32S3 Ultra-Speed Camera');
+
+                // Get initial status
+                await sendCommand('STATUS');
+
+                // Start performance monitoring
+                setInterval(updatePerformanceMetrics, 1000);
+
+            } catch (error) {
+                log('❌ Connection failed: ' + error.message);
+                updateConnectionStatus(false);
+            }
+        }
+
+        // Optimized notification setup
+        async function setupNotifications() {
+            // Enable notifications on all characteristics
+            await statusCharacteristic.startNotifications();
+            await imageCharacteristic.startNotifications();
+            await frameCharacteristic.startNotifications();
+            await audioCharacteristic.startNotifications();
+
+            // Use high-performance event handlers with passive listeners
+            statusCharacteristic.addEventListener('characteristicvaluechanged', 
+                handleStatusData, { passive: true });
+            imageCharacteristic.addEventListener('characteristicvaluechanged', 
+                handleImageData, { passive: true });
+            frameCharacteristic.addEventListener('characteristicvaluechanged', 
+                handleFrameData, { passive: true });
+            audioCharacteristic.addEventListener('characteristicvaluechanged', 
+                handleAudioData, { passive: true });
+
+            log('🎯 High-performance notifications enabled');
+        }
+
+        function onDisconnected() {
+            log('📴 Device disconnected');
+            updateConnectionStatus(false);
+            device = null;
+            server = null;
+            service = null;
+            currentMTU = 0;
+        }
+
+        // Enhanced command sending with retry logic
+        async function sendCommand(command) {
+            if (!controlCharacteristic) {
+                log('❌ Not connected');
+                return;
+            }
+
+            try {
+                const encoder = new TextEncoder();
+                await controlCharacteristic.writeValue(encoder.encode(command));
+                log('📤 Sent command: ' + command);
+            } catch (error) {
+                log('❌ Failed to send command: ' + error.message);
+                // Retry once for critical commands
+                if (['START_FRAMES', 'STOP_FRAMES'].includes(command)) {
+                    setTimeout(() => sendCommand(command), 100);
+                }
+            }
+        }
+
+        // Handle status data
+        function handleStatusData(event) {
+            const data = new TextDecoder().decode(event.target.value);
+            log('📊 Status: ' + data);
+        }
+
+        // Optimized image/frame handling for 510-byte chunks
+        function handleImageData(event) {
+            handleImageFrame(event, false);
+        }
+
+        function handleFrameData(event) {
+            handleImageFrame(event, true);
+        }
+
+        function handleImageFrame(event, isFrame) {
+            const data = new Uint8Array(event.target.value.buffer);
+            
+            // Track received bytes for performance monitoring
+            totalBytesReceived += data.length;
+
+            if (data[0] === 0x01) { // Start header
+                const chunks = (data[1] << 8) | data[2];
+                const size = (data[6] << 24) | (data[5] << 16) | (data[4] << 8) | data[3];
+                
+                expectedChunks = chunks;
+                expectedSize = size;
+                receivedChunks = 0;
+                imageBuffer = new Uint8Array(size);
+                frameStartTime = performance.now();
+                
+                if (!ultraPerformanceMode) {
+                    log(`📋 Starting ${isFrame ? 'frame' : 'image'}: ${size} bytes, ${chunks} chunks @ ${MAX_CHUNK_SIZE}B`);
+                }
+                showImageProgress();
+                updateProgress(0, chunks);
+
+                // Shorter timeout for ultra-performance mode
+                if (imageTimeout) clearTimeout(imageTimeout);
+                imageTimeout = setTimeout(() => {
+                    log(`⏰ ${isFrame ? 'Frame' : 'Image'} timeout! ${receivedChunks}/${expectedChunks} chunks`);
+                    hideImageProgress();
+                    imageBuffer = null;
+                }, ultraPerformanceMode ? 3000 : 8000);
+            }
+            else if (data[0] === 0x02) { // Data chunk - OPTIMIZED FOR 510-BYTE CHUNKS
+                if (!imageBuffer) return;
+
+                const chunkIndex = (data[1] << 8) | data[2];
+                const chunkData = data.slice(3);
+                
+                // Calculate offset based on 510-byte chunks (ESP32 optimization)
+                const offset = chunkIndex * MAX_CHUNK_SIZE;
+                
+                if (offset + chunkData.length <= imageBuffer.length) {
+                    imageBuffer.set(chunkData, offset);
+                    receivedChunks++;
+                    
+                    // Less frequent progress updates for better performance
+                    if (receivedChunks % 5 === 0 || receivedChunks === expectedChunks) {
+                        updateProgress(receivedChunks, expectedChunks);
+                    }
+                } else {
+                    if (!ultraPerformanceMode) {
+                        log(`❌ Chunk ${chunkIndex} out of bounds: offset ${offset}, size ${chunkData.length}`);
+                    }
+                }
+            }
+            else if (data[0] === 0x03) { // End marker
+                const transferTime = performance.now() - frameStartTime;
+                
+                // Clear timeout
+                if (imageTimeout) {
+                    clearTimeout(imageTimeout);
+                    imageTimeout = null;
+                }
+
+                // Display image if we have sufficient data (95% threshold for ultra-speed)
+                const completionRate = receivedChunks / expectedChunks;
+                if (completionRate >= 0.95 && imageBuffer) {
+                    displayImageOptimized(imageBuffer);
+                    frameCounter++;
+                    
+                    if (!ultraPerformanceMode || frameCounter % 10 === 0) {
+                        const speed = (expectedSize * 8 / transferTime).toFixed(0); // kbps
+                        log(`✅ ${isFrame ? 'Frame' : 'Image'} #${frameCounter}: ${expectedSize}B in ${transferTime.toFixed(1)}ms (${speed} kbps)`);
+                    }
+                } else {
+                    if (!ultraPerformanceMode) {
+                        log(`❌ ${isFrame ? 'Frame' : 'Image'} incomplete: ${(completionRate*100).toFixed(1)}% received`);
+                    }
+                }
+
+                hideImageProgress();
+                imageBuffer = null;
+            }
+        }
+
+        // Optimized image display with requestAnimationFrame
+        let imageUpdatePending = false;
+        function displayImageOptimized(imageData) {
+            if (!imageUpdatePending) {
+                imageUpdatePending = true;
+                requestAnimationFrame(() => {
+                    const blob = new Blob([imageData], { type: 'image/jpeg' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const frameDisplay = document.getElementById('frameDisplay');
+                    frameDisplay.innerHTML = `<img src="${url}" alt="ESP32S3 Ultra-Speed Image">`;
+                    
+                    // Clean up URL after a delay
+                    setTimeout(() => URL.revokeObjectURL(url), 500);
+                    imageUpdatePending = false;
+                });
+            }
+        }
+
+        // Enhanced audio processing for higher bandwidth (12.8 kbps)
+        function handleAudioData(event) {
+            const data = new Uint8Array(event.target.value.buffer);
+            totalBytesReceived += data.length;
+            
+            // Process μ-law audio data more efficiently
+            const pcmSamples = new Int16Array(data.length);
+            for (let i = 0; i < data.length; i++) {
+                pcmSamples[i] = mulawToPcm(data[i]);
+            }
+            
+            // Update visualizer efficiently
+            updateAudioVisualizerOptimized(pcmSamples);
+            
+            // Queue audio for playback
+            if (audioQueue.length < 8) { // Prevent excessive buffering
+                audioQueue.push(pcmSamples);
+            }
+            
+            // Process audio in batches for better performance
+            if (audioQueue.length >= 2) {
+                playAudioBatch();
+            }
+        }
+
+        // Optimized μ-law to PCM conversion
+        function mulawToPcm(mulaw) {
+            const BIAS = 0x84;
+            mulaw = ~mulaw;
+            const sign = (mulaw & 0x80);
+            const exponent = (mulaw >> 4) & 0x07;
+            const mantissa = mulaw & 0x0F;
+            let sample = mantissa << (exponent + 3);
+            sample += BIAS;
+            if (exponent > 0) sample += (1 << (exponent + 2));
+            return sign ? -sample : sample;
+        }
+
+        // Enhanced audio context initialization
+        async function initAudioContext() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 8000,
+                    latencyHint: 'interactive'
+                });
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 64;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                log('🎵 High-performance audio context initialized');
+            } catch (error) {
+                log('❌ Failed to initialize audio: ' + error.message);
+            }
+        }
+
+        // Optimized audio playback
+        function playAudioBatch() {
+            if (!audioContext || audioQueue.length === 0) return;
+
+            const samples = audioQueue.shift();
+            const buffer = audioContext.createBuffer(1, samples.length, 8000);
+            const channelData = buffer.getChannelData(0);
+            
+            for (let i = 0; i < samples.length; i++) {
+                channelData[i] = samples[i] / 32768.0 * 0.3; // Reduced volume for clarity
+            }
+            
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+            source.start();
+        }
+
+        // Optimized audio visualizer
+        function updateAudioVisualizerOptimized(samples) {
+            const bars = document.querySelectorAll('.audio-bar');
+            const barCount = bars.length;
+            const samplesPerBar = Math.floor(samples.length / barCount);
+            
+            for (let i = 0; i < barCount; i++) {
+                let rms = 0;
+                for (let j = 0; j < samplesPerBar; j++) {
+                    const sampleIndex = i * samplesPerBar + j;
+                    if (sampleIndex < samples.length) {
+                        rms += samples[sampleIndex] * samples[sampleIndex];
+                    }
+                }
+                const height = Math.min(Math.sqrt(rms / samplesPerBar) / 32768 * 100, 100);
+                bars[i].style.height = height + '%';
+            }
+        }
+
+        // Ultra-performance mode toggle
+        function toggleUltraPerformanceMode() {
+            ultraPerformanceMode = !ultraPerformanceMode;
+            const btn = document.getElementById('performanceModeBtn');
+            
+            if (ultraPerformanceMode) {
+                btn.textContent = '🔥 ULTRA MODE ACTIVE';
+                btn.style.background = 'linear-gradient(45deg, #ff4757, #ff3838)';
+                sendCommand('INTERVAL:0.02'); // 50 FPS mode
+                log('🔥 ULTRA PERFORMANCE MODE ACTIVATED - 50 FPS TARGET');
+            } else {
+                btn.textContent = '🚀 Ultra Performance Mode';
+                btn.style.background = 'linear-gradient(45deg, #ff6b6b, #feca57)';
+                sendCommand('INTERVAL:0.033'); // 30 FPS mode
+                log('⚡ Standard high-performance mode - 30 FPS');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('connectBtn').addEventListener('click', connectToBLE);
+        document.getElementById('statusBtn').addEventListener('click', () => sendCommand('STATUS'));
+        document.getElementById('captureBtn').addEventListener('click', () => sendCommand('CAPTURE'));
+        document.getElementById('startFramesBtn').addEventListener('click', () => sendCommand('START_FRAMES'));
+        document.getElementById('stopFramesBtn').addEventListener('click', () => sendCommand('STOP_FRAMES'));
+        document.getElementById('performanceModeBtn').addEventListener('click', toggleUltraPerformanceMode);
+        
+        document.getElementById('startAudioBtn').addEventListener('click', async () => {
+            if (!audioContext) await initAudioContext();
+            if (audioContext.state === 'suspended') await audioContext.resume();
+            sendCommand('START_AUDIO');
+        });
+        document.getElementById('stopAudioBtn').addEventListener('click', () => sendCommand('STOP_AUDIO'));
+
+        // Settings event listeners with FPS calculation
+        document.getElementById('resolutionSelect').addEventListener('change', (e) => {
+            sendCommand(`SIZE:${e.target.value}`);
+        });
+
+        document.getElementById('qualitySlider').addEventListener('input', (e) => {
+            document.getElementById('qualityValue').textContent = e.target.value;
+            sendCommand(`QUALITY:${e.target.value}`);
+        });
+
+        document.getElementById('intervalSlider').addEventListener('input', (e) => {
+            const interval = parseFloat(e.target.value);
+            const fps = (1 / interval).toFixed(1);
+            document.getElementById('intervalValue').textContent = interval;
+            document.getElementById('fpsDisplay').textContent = fps;
+            sendCommand(`INTERVAL:${interval}`);
+        });
+
+        // Initialize
+        initAudioVisualizer();
+        log('🚀 ESP32S3 Ultra-High Performance Client ready');
+        log('🎯 Target: 400-600+ kbps, 25-30 FPS with 517-byte MTU');
+        log('⚡ Click "Connect to ESP32S3" to start ultra-speed streaming');
+    </script>
+</body>
+</html> 

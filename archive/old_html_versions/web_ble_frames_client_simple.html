@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32S3 BLE Camera (Simple)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.connected { background: #d4edda; color: #155724; }
+        .status.disconnected { background: #f8d7da; color: #721c24; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .log {
+            background: #333;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-top: 20px;
+        }
+        .frame-display {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+        }
+        .frame-display img {
+            max-width: 100%;
+            border-radius: 5px;
+        }
+        .video-canvas {
+            max-width: 100%;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            background: #000;
+        }
+        .codec-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ESP32S3 BLE Camera (Simple)</h1>
+        
+        <div id="status" class="status disconnected">
+            BLE Disconnected
+        </div>
+        
+        <div>
+            <button id="connectBtn" onclick="connectBLE()">Connect BLE</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <button id="statusBtn" onclick="requestStatus()" disabled>Get Status</button>
+        </div>
+        
+        <div>
+            <h3>Camera Controls</h3>
+            <button id="captureBtn" onclick="captureImage()" disabled>Capture Image</button>
+            <button id="startFramesBtn" onclick="startFrames()" disabled>Start Live Frames</button>
+            <button id="stopFramesBtn" onclick="stopFrames()" disabled>Stop Frames</button>
+        </div>
+        
+        <div>
+            <h3>H.264 Recording</h3>
+            <button id="startRecordingBtn" onclick="startH264Recording()" disabled>Start H.264 Recording</button>
+            <button id="stopRecordingBtn" onclick="stopH264Recording()" disabled>Stop & Download H.264</button>
+            <div id="recordingStatus" style="margin-top: 10px; font-weight: bold;"></div>
+        </div>
+        
+        <div class="frame-display" id="frameDisplay">
+            <canvas id="videoCanvas" class="video-canvas" width="320" height="240" style="display: none;"></canvas>
+            <div id="codecInfo" class="codec-info" style="display: none;"></div>
+            <p id="defaultMessage">Connect to ESP32S3 to see camera output</p>
+        </div>
+        
+        <div class="log" id="log">
+            <div>ESP32S3 BLE Camera Log</div>
+            <div>Ready to connect...</div>
+        </div>
+    </div>
+
+    <script>
+        // BLE Service and Characteristic UUIDs (16-bit)
+        const SERVICE_UUID = 0x1234;
+        const CONTROL_CHAR_UUID = 0x1235;
+        const STATUS_CHAR_UUID = 0x1236;
+        const IMAGE_CHAR_UUID = 0x1237;
+        const FRAME_CHAR_UUID = 0x1238;
+        const AUDIO_CHAR_UUID = 0x1239;
+
+        // Global variables
+        let bleDevice = null;
+        let bleServer = null;
+        let controlCharacteristic = null;
+        let statusCharacteristic = null;
+        let imageCharacteristic = null;
+        let frameCharacteristic = null;
+        let audioCharacteristic = null;
+        
+        let isConnected = false;
+        let frameCount = 0;
+        
+        // Image reconstruction buffers
+        let imageBuffer = null;
+        let frameBuffer = null;
+        let imageChunksReceived = 0;
+        let frameChunksReceived = 0;
+        let expectedImageSize = 0;
+        let expectedFrameSize = 0;
+        let expectedImageChunks = 0;
+        let expectedFrameChunks = 0;
+        let frameBufferOffset = 0;  // For sequential chunk assembly like Arduino
+        let imageBufferOffset = 0;  // For sequential chunk assembly like Arduino
+
+        // H.264 Video decoder variables
+        let videoDecoder = null;
+        let videoCanvas = null;
+        let videoContext = null;
+        let isWebCodecsSupported = false;
+        let decodedFrameCount = 0;
+        let isDecoderConfigured = false;
+        let spsData = null;
+        let ppsData = null;
+        let frameTimestamp = 0;
+        
+        // H.264 Recording variables
+        let isRecording = false;
+        let h264RecordingData = [];
+        let recordingStartTime = null;
+        let recordedFrameCount = 0;
+
+        // Initialize video decoder
+        function initVideoDecoder() {
+            // Check for WebCodecs support
+            if (typeof VideoDecoder !== 'undefined') {
+                isWebCodecsSupported = true;
+                videoCanvas = document.getElementById('videoCanvas');
+                videoContext = videoCanvas.getContext('2d');
+                
+                log('WebCodecs API supported - H.264 video decoding enabled (High-Speed Mode)');
+                
+                try {
+                    videoDecoder = new VideoDecoder({
+                        output: (frame) => {
+                            // Draw the decoded frame to canvas
+                            videoContext.drawImage(frame, 0, 0, videoCanvas.width, videoCanvas.height);
+                            frame.close();
+                            decodedFrameCount++;
+                            
+                            // Update codec info with speed metrics for QQVGA
+                            const fps = Math.round(decodedFrameCount / ((Date.now() - recordingStartTime) / 1000));
+                            updateCodecInfo(`QVGA H.264 • Frame ${decodedFrameCount} • 320x240 • ~${fps}fps`);
+                        },
+                        error: (error) => {
+                            log('VideoDecoder error: ' + error.message);
+                        }
+                    });
+                    
+                    log('H.264 VideoDecoder created - optimized for high-speed transmission');
+                    
+                } catch (error) {
+                    log('Failed to initialize VideoDecoder: ' + error.message);
+                    isWebCodecsSupported = false;
+                    videoDecoder = null;
+                }
+            } else {
+                isWebCodecsSupported = false;
+                log('WebCodecs API not supported - H.264 video disabled');
+                log('Use Chrome 94+, Edge 94+, or Opera 80+ for H.264 video support');
+            }
+        }
+
+        function updateCodecInfo(info) {
+            const codecInfo = document.getElementById('codecInfo');
+            codecInfo.textContent = info;
+            codecInfo.style.display = 'block';
+        }
+
+        function reinitializeDecoder() {
+            try {
+                if (videoDecoder) {
+                    try {
+                        videoDecoder.close();
+                    } catch (closeError) {
+                        log('Error closing decoder: ' + closeError.message);
+                    }
+                }
+                
+                // Reset state
+                isDecoderConfigured = false;
+                spsData = null;
+                ppsData = null;
+                frameTimestamp = 0;
+                videoDecoder = null;
+                
+                // Reinitialize decoder (but don't call configuration automatically)
+                if (typeof VideoDecoder !== 'undefined') {
+                    videoDecoder = new VideoDecoder({
+                        output: (frame) => {
+                            // Draw the decoded frame to canvas
+                            videoContext.drawImage(frame, 0, 0, videoCanvas.width, videoCanvas.height);
+                            frame.close();
+                            decodedFrameCount++;
+                            
+                            // Update codec info
+                            updateCodecInfo(`Live H.264 video • Frame ${decodedFrameCount} • ${videoCanvas.width}x${videoCanvas.height}`);
+                        },
+                        error: (error) => {
+                            log('VideoDecoder error: ' + error.message);
+                        }
+                    });
+                    log('Decoder reinitialized - waiting for new SPS/PPS');
+                } else {
+                    log('VideoDecoder not available for reinitialization');
+                }
+                
+            } catch (error) {
+                log('Failed to reinitialize decoder: ' + error.message);
+            }
+        }
+
+        async function connectBLE() {
+            try {
+                log('Requesting BLE device (High-Speed Mode - MTU 517)...');
+                
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { name: "ESP32S3-Camera" },
+                        { namePrefix: "ESP32S3" }
+                    ],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                log(`Found device: ${bleDevice.name || 'Unknown'}`);
+                log('Connecting to GATT server...');
+                
+                bleServer = await bleDevice.gatt.connect();
+                
+                log('Getting primary service...');
+                const service = await bleServer.getPrimaryService(SERVICE_UUID);
+                
+                log('Getting characteristics...');
+                controlCharacteristic = await service.getCharacteristic(CONTROL_CHAR_UUID);
+                statusCharacteristic = await service.getCharacteristic(STATUS_CHAR_UUID);
+                imageCharacteristic = await service.getCharacteristic(IMAGE_CHAR_UUID);
+                frameCharacteristic = await service.getCharacteristic(FRAME_CHAR_UUID);
+                audioCharacteristic = await service.getCharacteristic(AUDIO_CHAR_UUID);
+                
+                log('Starting notifications...');
+                try {
+                    await statusCharacteristic.startNotifications();
+                    log('Status notifications started');
+                } catch (error) {
+                    log('Status notifications failed: ' + error.message);
+                }
+                
+                try {
+                    await imageCharacteristic.startNotifications();
+                    log('Image notifications started');
+                } catch (error) {
+                    log('Image notifications failed: ' + error.message);
+                }
+                
+                try {
+                    await frameCharacteristic.startNotifications();
+                    log('Frame notifications started');
+                } catch (error) {
+                    log('Frame notifications failed: ' + error.message);
+                }
+                
+                // Add event listeners
+                statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusUpdate);
+                imageCharacteristic.addEventListener('characteristicvaluechanged', handleImageData);
+                frameCharacteristic.addEventListener('characteristicvaluechanged', handleFrameData);
+                
+                bleDevice.addEventListener('gattserverdisconnected', handleDisconnection);
+                
+                isConnected = true;
+                updateUI();
+                
+                log('BLE connected successfully!');
+                log('High-speed connection ready - 500 byte chunks, no delays');
+                recordingStartTime = Date.now(); // Initialize timing for FPS calculation
+                await requestStatus();
+                
+            } catch (error) {
+                log('Connection failed: ' + error.message);
+                if (error.message.includes('No services matching UUID')) {
+                    log('Make sure ESP32S3 is running the latest firmware with 16-bit UUIDs');
+                }
+            }
+        }
+
+        async function disconnect() {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+            }
+            handleDisconnection();
+        }
+
+        function handleDisconnection() {
+            isConnected = false;
+            bleDevice = null;
+            bleServer = null;
+            controlCharacteristic = null;
+            statusCharacteristic = null;
+            imageCharacteristic = null;
+            frameCharacteristic = null;
+            audioCharacteristic = null;
+            
+            // Reset video display and decoder state
+            document.getElementById('defaultMessage').style.display = 'block';
+            document.getElementById('videoCanvas').style.display = 'none';
+            document.getElementById('codecInfo').style.display = 'none';
+            
+            // Reset decoder state
+            isDecoderConfigured = false;
+            spsData = null;
+            ppsData = null;
+            frameTimestamp = 0;
+            decodedFrameCount = 0;
+            
+            updateUI();
+            log('Device disconnected');
+        }
+
+        function updateUI() {
+            const status = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const statusBtn = document.getElementById('statusBtn');
+            const captureBtn = document.getElementById('captureBtn');
+            const startFramesBtn = document.getElementById('startFramesBtn');
+            const stopFramesBtn = document.getElementById('stopFramesBtn');
+            const startRecordingBtn = document.getElementById('startRecordingBtn');
+            const stopRecordingBtn = document.getElementById('stopRecordingBtn');
+            
+            if (isConnected) {
+                status.textContent = 'BLE Connected';
+                status.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                statusBtn.disabled = false;
+                captureBtn.disabled = false;
+                startFramesBtn.disabled = false;
+                stopFramesBtn.disabled = false;
+                startRecordingBtn.disabled = false;
+                stopRecordingBtn.disabled = isRecording ? false : true;
+            } else {
+                status.textContent = 'BLE Disconnected';
+                status.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                statusBtn.disabled = true;
+                captureBtn.disabled = true;
+                startFramesBtn.disabled = true;
+                stopFramesBtn.disabled = true;
+                startRecordingBtn.disabled = true;
+                stopRecordingBtn.disabled = true;
+            }
+            
+            // Update recording status
+            updateRecordingStatus();
+        }
+
+        async function sendCommand(command) {
+            if (!controlCharacteristic) {
+                log('Not connected');
+                return false;
+            }
+            
+            try {
+                const encoder = new TextEncoder();
+                await controlCharacteristic.writeValue(encoder.encode(command));
+                log('Sent: ' + command);
+                return true;
+            } catch (error) {
+                log('Failed to send command: ' + error.message);
+                return false;
+            }
+        }
+
+        async function requestStatus() {
+            await sendCommand('STATUS');
+        }
+
+        async function captureImage() {
+            await sendCommand('CAPTURE');
+        }
+
+        async function startFrames() {
+            await sendCommand('START_FRAMES');
+        }
+
+        async function stopFrames() {
+            await sendCommand('STOP_FRAMES');
+        }
+
+        function handleStatusUpdate(event) {
+            const decoder = new TextDecoder();
+            const statusText = decoder.decode(event.target.value);
+            log('Status: ' + statusText);
+        }
+
+        function handleImageData(event) {
+            handleChunkedImageReception(event, false);
+        }
+
+        function handleFrameData(event) {
+            handleChunkedImageReception(event, true);
+        }
+
+        function handleChunkedImageReception(event, isFrame) {
+            const data = new Uint8Array(event.target.value.buffer);
+            
+            if (data.length === 0) return;
+            
+            const packetType = data[0];
+            
+            if (packetType === 0x01) {
+                // H.264 Start packet: [0x01][size_b3][size_b2][size_b1][size_b0][frame_type]
+                // New simplified protocol like Arduino approach
+                if (data.length >= 6) {
+                    const totalSize = (data[1] << 24) | (data[2] << 16) | (data[3] << 8) | data[4];
+                    const frameType = data[5]; // 0x04 for frame, 0x03 for image
+                    
+                    if (isFrame) {
+                        expectedFrameSize = totalSize;
+                        frameChunksReceived = 0;
+                        frameBuffer = new Uint8Array(totalSize);
+                        frameBufferOffset = 0;
+                        log(`Starting H.264 frame reception: ${totalSize} bytes (QVGA 320x240)`);
+                    } else {
+                        expectedImageSize = totalSize;
+                        imageChunksReceived = 0;
+                        imageBuffer = new Uint8Array(totalSize);
+                        imageBufferOffset = 0;
+                        log(`Starting H.264 image reception: ${totalSize} bytes (QVGA 320x240)`);
+                    }
+                }
+            }
+            else if (packetType === 0x02) {
+                // H.264 data chunk: [0x02][chunk_idx_hi][chunk_idx_lo][data...]
+                // Conservative chunking like Arduino project
+                if (data.length >= 3) {
+                    const chunkIdx = (data[1] << 8) | data[2];
+                    const chunkData = data.slice(3);
+                    
+                    if (isFrame && frameBuffer && frameBufferOffset + chunkData.length <= frameBuffer.length) {
+                        frameBuffer.set(chunkData, frameBufferOffset);
+                        frameBufferOffset += chunkData.length;
+                        frameChunksReceived++;
+                        
+                        // High-speed progress logging (optimized for QQVGA small frames)
+                        if (frameChunksReceived % 3 === 0) {
+                            log(`Frame progress: ${frameChunksReceived} chunks, ${frameBufferOffset}/${expectedFrameSize} bytes (QQVGA High-Speed)`);
+                        }
+                    } else if (!isFrame && imageBuffer && imageBufferOffset + chunkData.length <= imageBuffer.length) {
+                        imageBuffer.set(chunkData, imageBufferOffset);
+                        imageBufferOffset += chunkData.length;
+                        imageChunksReceived++;
+                        
+                        // High-speed progress logging (optimized for QQVGA small frames)
+                        if (imageChunksReceived % 3 === 0) {
+                            log(`Image progress: ${imageChunksReceived} chunks, ${imageBufferOffset}/${expectedImageSize} bytes (QQVGA High-Speed)`);
+                        }
+                    }
+                }
+            }
+            else if (packetType === 0x03) {
+                // H.264 completion marker: [0x03][chunks_hi][chunks_lo]
+                // Conservative completion handling like Arduino
+                if (data.length >= 3) {
+                    const totalChunks = (data[1] << 8) | data[2];
+                    
+                    if (isFrame && frameBuffer && frameBufferOffset === expectedFrameSize) {
+                        const throughputKbps = Math.round(frameBuffer.length * 8 / 1024);
+                        const currentFps = Math.round(frameCount / ((Date.now() - recordingStartTime) / 1000));
+                        log(`H.264 QVGA frame complete: ${frameBuffer.length} bytes in ${frameChunksReceived} chunks (${throughputKbps}kbps) • ${currentFps}fps`);
+                        displayH264Video(frameBuffer, true);
+                        frameBuffer = null;
+                        frameCount++;
+                    } else if (!isFrame && imageBuffer && imageBufferOffset === expectedImageSize) {
+                        const throughputKbps = Math.round(imageBuffer.length * 8 / 1024);
+                        log(`H.264 QVGA image complete: ${imageBuffer.length} bytes in ${imageChunksReceived} chunks (${throughputKbps}kbps)`);
+                        displayH264Video(imageBuffer, false);
+                        imageBuffer = null;
+                        frameCount++;
+                    } else {
+                        log(`H.264 data incomplete: received ${isFrame ? frameBufferOffset : imageBufferOffset}/${isFrame ? expectedFrameSize : expectedImageSize} bytes`);
+                        if (isFrame) frameBuffer = null;
+                        else imageBuffer = null;
+                    }
+                }
+            }
+            else if (packetType === 0xFF) {
+                // H.264 abort marker: [0xFF][chunks_hi][chunks_lo]
+                // Handle transmission failures like Arduino project
+                if (data.length >= 3) {
+                    const abortedChunks = (data[1] << 8) | data[2];
+                    log(`H.264 transmission aborted after ${abortedChunks} chunks`);
+                    
+                    // Reset buffers
+                    if (isFrame) {
+                        frameBuffer = null;
+                        frameChunksReceived = 0;
+                    } else {
+                        imageBuffer = null;
+                        imageChunksReceived = 0;
+                    }
+                }
+            }
+            else if (packetType === 0x11) {
+                // Legacy H.264 Start packet - for backward compatibility
+                if (data.length >= 8) {
+                    const totalChunks = (data[1] << 8) | data[2];
+                    const totalSize = data[3] | (data[4] << 8) | (data[5] << 16) | (data[6] << 24);
+                    const frameType = data[7];
+                    
+                    if (isFrame) {
+                        expectedFrameChunks = totalChunks;
+                        expectedFrameSize = totalSize;
+                        frameChunksReceived = 0;
+                        frameBuffer = new Uint8Array(totalSize);
+                        log(`Starting legacy H.264 frame reception: ${totalSize} bytes in ${totalChunks} chunks`);
+                    } else {
+                        expectedImageChunks = totalChunks;
+                        expectedImageSize = totalSize;
+                        imageChunksReceived = 0;
+                        imageBuffer = new Uint8Array(totalSize);
+                        log(`Starting legacy H.264 image reception: ${totalSize} bytes in ${totalChunks} chunks`);
+                    }
+                }
+            }
+            else if (packetType === 0x12) {
+                // Legacy H.264 data chunk - for backward compatibility
+                if (data.length >= 3) {
+                    const chunkIdx = (data[1] << 8) | data[2];
+                    const chunkData = data.slice(3);
+                    
+                    if (isFrame && frameBuffer) {
+                        const offset = chunkIdx * 220; // Legacy chunk calculation
+                        if (offset + chunkData.length <= frameBuffer.length) {
+                            frameBuffer.set(chunkData, offset);
+                            frameChunksReceived++;
+                        }
+                    } else if (!isFrame && imageBuffer) {
+                        const offset = chunkIdx * 220; // Legacy chunk calculation
+                        if (offset + chunkData.length <= imageBuffer.length) {
+                            imageBuffer.set(chunkData, offset);
+                            imageChunksReceived++;
+                        }
+                    }
+                }
+            }
+            else if (packetType === 0x13) {
+                // Legacy H.264 end marker - for backward compatibility
+                if (data.length >= 3) {
+                    const totalChunks = (data[1] << 8) | data[2];
+                    
+                    if (isFrame && frameBuffer && frameChunksReceived === expectedFrameChunks) {
+                        log(`Legacy H.264 frame complete: ${frameBuffer.length} bytes`);
+                        displayH264Video(frameBuffer, true);
+                        frameBuffer = null;
+                        frameCount++;
+                    } else if (!isFrame && imageBuffer && imageChunksReceived === expectedImageChunks) {
+                        log(`Legacy H.264 image complete: ${imageBuffer.length} bytes`);
+                        displayH264Video(imageBuffer, false);
+                        imageBuffer = null;
+                        frameCount++;
+                    }
+                }
+            }
+            else {
+                log(`Unknown packet type: 0x${packetType.toString(16).padStart(2, '0')}`);
+            }
+        }
+
+        function displayImage(imageData, isFrame) {
+            const blob = new Blob([imageData], { type: 'image/jpeg' });
+            const url = URL.createObjectURL(blob);
+            
+            const frameDisplay = document.getElementById('frameDisplay');
+            frameDisplay.innerHTML = `
+                <img src="${url}" alt="${isFrame ? 'Live frame' : 'Captured image'}" />
+                <p>JPEG ${isFrame ? 'Frame' : 'Image'} #${frameCount} (${imageData.length} bytes)</p>
+            `;
+            
+            // Clean up URL after a delay
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        }
+
+        function displayH264Video(h264Data, isFrame) {
+            log(`H.264 ${isFrame ? 'frame' : 'image'} received: ${h264Data.length} bytes`);
+            
+            if (!isWebCodecsSupported || !videoDecoder) {
+                // Fallback display for unsupported browsers
+                const frameDisplay = document.getElementById('frameDisplay');
+                frameDisplay.innerHTML = `
+                    <div style="padding: 20px; border: 2px solid #007bff; border-radius: 10px; background: #f8f9fa;">
+                        <h3>H.264 ${isFrame ? 'Frame' : 'Image'} Received</h3>
+                        <p><strong>Data Size:</strong> ${h264Data.length} bytes</p>
+                        <p><strong>Frame #:</strong> ${frameCount}</p>
+                        <p><strong>First 32 bytes (hex):</strong></p>
+                        <code style="display: block; background: #f1f1f1; padding: 10px; font-family: monospace;">
+                            ${Array.from(h264Data.slice(0, 32)).map(b => b.toString(16).padStart(2, '0')).join(' ')}
+                        </code>
+                        <p style="color: #dc3545; font-weight: bold; margin-top: 15px;">
+                            ⚠️ WebCodecs API not supported. Please use Chrome 94+, Edge 94+, or Opera 80+ for H.264 video display.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            try {
+                // Show video canvas and hide default message
+                document.getElementById('defaultMessage').style.display = 'none';
+                document.getElementById('videoCanvas').style.display = 'block';
+                
+                // Decode H.264 data
+                decodeH264Data(h264Data, isFrame);
+                
+            } catch (error) {
+                log('H.264 decoding error: ' + error.message);
+                updateCodecInfo(`H.264 decoding error: ${error.message}`);
+            }
+        }
+
+        function decodeH264Data(h264Data, isFrame) {
+            try {
+                // Save raw H.264 data if recording
+                if (isRecording) {
+                    h264RecordingData.push(new Uint8Array(h264Data));
+                    recordedFrameCount++;
+                    updateRecordingStatus();
+                }
+
+                // Parse NAL units from H.264 data (still in Annex-B form)
+                const nalUnits = parseNALUnits(h264Data);
+                log(`Found ${nalUnits.length} NAL units in H.264 data`);
+
+                // Process each NAL unit one by one
+                nalUnits.forEach((nalData, index) => {
+                    if (nalData.length < 5) return; // Too small to contain a valid header
+
+                    // Determine NAL header index (skip any start code)
+                    let nalHeaderIndex = 0;
+                    if (nalData[0] === 0x00 && nalData[1] === 0x00) {
+                        if (nalData[2] === 0x00 && nalData[3] === 0x01) {
+                            nalHeaderIndex = 4;  // 4-byte start code
+                        } else if (nalData[2] === 0x01) {
+                            nalHeaderIndex = 3;  // 3-byte start code
+                        }
+                    }
+
+                    // Extract the raw NAL header byte (after the start code)
+                    const nalUnitType = nalData[nalHeaderIndex] & 0x1F;
+                    log(`NAL unit ${index}: type ${nalUnitType} (${getNALTypeName(nalUnitType)}), size ${nalData.length}`);
+
+                    // If it's SPS or PPS, stash it so we can configure the decoder later
+                    if (nalUnitType === 7) { // SPS
+                        spsData = nalData.subarray(nalHeaderIndex);
+                        log('Found SPS data');
+                    } else if (nalUnitType === 8) { // PPS
+                        ppsData = nalData.subarray(nalHeaderIndex);
+                        log('Found PPS data');
+                    }
+
+                    // Once we have both, configure the decoder (we only do this once)
+                    if (!isDecoderConfigured && spsData && ppsData && videoDecoder) {
+                        configureH264Decoder();
+                    }
+
+                    // Only decode actual frame slices (non-IDR or IDR)
+                    if (isDecoderConfigured && (nalUnitType === 1 || nalUnitType === 5)) {
+                        try {
+                            // If decoder was closed unexpectedly, reinitialize
+                            if (videoDecoder.state !== 'configured') {
+                                log(`Decoder not ready for frame decode (state=${videoDecoder.state}), reinitializing…`);
+                                reinitializeDecoder();
+                                return;
+                            }
+
+                            // === BEGIN REPLACED SECTION ===
+                            // Instead of feeding raw Annex-B nalData, we convert it to length-prefixed (AVCC) form:
+
+                            // 1) Find the length of the Annex-B start code (3 or 4 bytes)
+                            let startCodeLength = 0;
+                            if (nalData[0] === 0x00 && nalData[1] === 0x00) {
+                                if (nalData[2] === 0x00 && nalData[3] === 0x01) {
+                                    startCodeLength = 4;
+                                } else if (nalData[2] === 0x01) {
+                                    startCodeLength = 3;
+                                }
+                            }
+                            if (startCodeLength === 0) {
+                                // Not a valid Annex-B NAL, skip it
+                                return;
+                            }
+
+                            // 2) The "payload" is everything after that start code
+                            const payload = nalData.subarray(startCodeLength);
+                            const payloadLength = payload.byteLength;
+
+                            // 3) Build 4-byte big-endian length prefix
+                            const beLength = new Uint8Array(4);
+                            beLength[0] = (payloadLength >>> 24) & 0xFF;
+                            beLength[1] = (payloadLength >>> 16) & 0xFF;
+                            beLength[2] = (payloadLength >>> 8)  & 0xFF;
+                            beLength[3] = (payloadLength >>> 0)  & 0xFF;
+
+                            // 4) Concatenate the length prefix + payload
+                            const avccBuffer = new Uint8Array(4 + payloadLength);
+                            avccBuffer.set(beLength, 0);
+                            avccBuffer.set(payload,   4);
+
+                            // 5) Now hand it off to WebCodecs
+                            const isKeyFrame = nalUnitType === 5; // IDR frame
+                            const chunk = new EncodedVideoChunk({
+                                type: isKeyFrame ? 'key' : 'delta',
+                                timestamp: frameTimestamp,
+                                data: avccBuffer
+                            });
+                            videoDecoder.decode(chunk);
+                            frameTimestamp += 50000; // ~20fps (50ms between frames)
+                            // === END REPLACED SECTION ===
+
+                        } catch (decodeError) {
+                            log(`Failed to decode NAL unit ${index}: ${decodeError.message}`);
+                            if (decodeError.message.includes('closed codec')) {
+                                log('Decoder closed unexpectedly — reinitializing…');
+                                reinitializeDecoder();
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                log('H.264 parsing error: ' + error.message);
+            }
+        }
+
+        function getNALTypeName(type) {
+            const types = {
+                1: 'Non-IDR slice',
+                5: 'IDR slice',
+                6: 'SEI',
+                7: 'SPS',
+                8: 'PPS',
+                9: 'Access unit delimiter'
+            };
+            return types[type] || `Unknown (${type})`;
+        }
+
+        function configureH264Decoder() {
+            try {
+                // Check if decoder is available and not closed
+                if (!videoDecoder || videoDecoder.state === 'closed') {
+                    log('Decoder closed, reinitializing before configuration');
+                    initVideoDecoder();
+                    if (!videoDecoder) {
+                        log('Failed to reinitialize decoder');
+                        return;
+                    }
+                }
+                
+                // Create description field with SPS and PPS
+                const description = createAVCDecoderConfig(spsData, ppsData);
+                
+                log('Configuring decoder with SPS/PPS...');
+                videoDecoder.configure({
+                    codec: 'avc1.42E01E', // H.264 Baseline Profile Level 3.0
+                    codedWidth: 480,
+                    codedHeight: 320,
+                    displayAspectWidth: 480,
+                    displayAspectHeight: 320,
+                    description: description
+                });
+                
+                isDecoderConfigured = true;
+                log('H.264 decoder configured successfully with SPS/PPS');
+                
+            } catch (error) {
+                log('Failed to configure H.264 decoder: ' + error.message);
+                // Try to reinitialize and configure again
+                try {
+                    log('Attempting decoder reinitialize and reconfigure...');
+                    reinitializeDecoder();
+                    if (videoDecoder && spsData && ppsData) {
+                        const description = createAVCDecoderConfig(spsData, ppsData);
+                        videoDecoder.configure({
+                            codec: 'avc1.42E01E',
+                            codedWidth: 480,
+                            codedHeight: 320,
+                            displayAspectWidth: 480,
+                            displayAspectHeight: 320,
+                            description: description
+                        });
+                        isDecoderConfigured = true;
+                        log('H.264 decoder reconfigured successfully');
+                    }
+                } catch (retryError) {
+                    log('Failed to reinitialize and reconfigure decoder: ' + retryError.message);
+                }
+            }
+        }
+
+        function createAVCDecoderConfig(sps, pps) {
+            // Create AVC decoder configuration record (AVCC format)
+            // This is needed for WebCodecs to properly handle H.264
+            
+            const configSize = 7 + 2 + sps.length + 1 + 2 + pps.length;
+            const config = new Uint8Array(configSize);
+            let offset = 0;
+            
+            // AVCC header
+            config[offset++] = 0x01; // configurationVersion
+            config[offset++] = sps[1]; // AVCProfileIndication (from SPS)
+            config[offset++] = sps[2]; // profile_compatibility (from SPS)
+            config[offset++] = sps[3]; // AVCLevelIndication (from SPS)
+            config[offset++] = 0xFF; // lengthSizeMinusOne (4 bytes - 1)
+            
+            // SPS
+            config[offset++] = 0xE1; // numOfSequenceParameterSets (1 SPS)
+            config[offset++] = (sps.length >> 8) & 0xFF; // SPS length high byte
+            config[offset++] = sps.length & 0xFF; // SPS length low byte
+            config.set(sps, offset); // SPS data
+            offset += sps.length;
+            
+            // PPS
+            config[offset++] = 0x01; // numOfPictureParameterSets (1 PPS)
+            config[offset++] = (pps.length >> 8) & 0xFF; // PPS length high byte
+            config[offset++] = pps.length & 0xFF; // PPS length low byte
+            config.set(pps, offset); // PPS data
+            
+            return config;
+        }
+
+        function parseNALUnits(h264Data) {
+            const nalUnits = [];
+            let i = 0;
+            
+            while (i < h264Data.length - 3) {
+                // Look for NAL unit start codes (0x00 0x00 0x00 0x01 or 0x00 0x00 0x01)
+                if (h264Data[i] === 0x00 && h264Data[i + 1] === 0x00) {
+                    let startCodeLength = 0;
+                    if (h264Data[i + 2] === 0x00 && h264Data[i + 3] === 0x01) {
+                        startCodeLength = 4; // 4-byte start code
+                    } else if (h264Data[i + 2] === 0x01) {
+                        startCodeLength = 3; // 3-byte start code
+                    }
+                    
+                    if (startCodeLength > 0) {
+                        // Find the next start code or end of data
+                        let nextStart = i + startCodeLength;
+                        let found = false;
+                        
+                        for (let j = nextStart; j < h264Data.length - 3; j++) {
+                            if (h264Data[j] === 0x00 && h264Data[j + 1] === 0x00) {
+                                if ((h264Data[j + 2] === 0x00 && h264Data[j + 3] === 0x01) ||
+                                    h264Data[j + 2] === 0x01) {
+                                    // Extract NAL unit (including start code)
+                                    nalUnits.push(h264Data.slice(i, j));
+                                    i = j;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (!found) {
+                            // Last NAL unit
+                            nalUnits.push(h264Data.slice(i));
+                            break;
+                        }
+                    } else {
+                        i++;
+                    }
+                } else {
+                    i++;
+                }
+            }
+            
+            return nalUnits;
+        }
+
+        // H.264 Recording Functions
+        function startH264Recording() {
+            if (isRecording) {
+                log('Recording already in progress');
+                return;
+            }
+            
+            // Reset recording data
+            h264RecordingData = [];
+            recordedFrameCount = 0;
+            recordingStartTime = new Date();
+            isRecording = true;
+            
+            // Update UI
+            document.getElementById('startRecordingBtn').disabled = true;
+            document.getElementById('stopRecordingBtn').disabled = false;
+            updateRecordingStatus();
+            
+            log('Started H.264 recording - capturing raw stream data');
+        }
+
+        function stopH264Recording() {
+            if (!isRecording) {
+                log('No recording in progress');
+                return;
+            }
+            
+            isRecording = false;
+            
+            // Update UI
+            document.getElementById('startRecordingBtn').disabled = false;
+            document.getElementById('stopRecordingBtn').disabled = true;
+            
+            // Combine all H.264 data chunks
+            let totalSize = 0;
+            h264RecordingData.forEach(chunk => totalSize += chunk.length);
+            
+            const combinedData = new Uint8Array(totalSize);
+            let offset = 0;
+            h264RecordingData.forEach(chunk => {
+                combinedData.set(chunk, offset);
+                offset += chunk.length;
+            });
+            
+            // Create filename with timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `esp32s3_h264_${timestamp}.h264`;
+            
+            // Download the file
+            downloadH264File(combinedData, filename);
+            
+            const duration = ((new Date() - recordingStartTime) / 1000).toFixed(1);
+            log(`H.264 recording saved: ${filename}`);
+            log(`Duration: ${duration}s, Frames: ${recordedFrameCount}, Size: ${totalSize} bytes`);
+            
+            // Clear recording data
+            h264RecordingData = [];
+            updateRecordingStatus();
+        }
+
+        function updateRecordingStatus() {
+            const statusDiv = document.getElementById('recordingStatus');
+            if (isRecording) {
+                const duration = recordingStartTime ? ((new Date() - recordingStartTime) / 1000).toFixed(1) : 0;
+                statusDiv.textContent = `Recording: ${recordedFrameCount} frames, ${duration}s`;
+                statusDiv.style.color = '#dc3545';
+            } else {
+                statusDiv.textContent = 'Not recording';
+                statusDiv.style.color = '#6c757d';
+            }
+        }
+
+        function downloadH264File(data, filename) {
+            try {
+                // Create blob and download
+                const blob = new Blob([data], { type: 'video/h264' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                // Clean up
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                
+                log(`Downloaded H.264 file: ${filename} (${data.length} bytes)`);
+                
+            } catch (error) {
+                log(`Error downloading H.264 file: ${error.message}`);
+            }
+        }
+
+        function log(message) {
+            const logContainer = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep only last 50 log entries
+            while (logContainer.children.length > 52) {
+                logContainer.removeChild(logContainer.children[2]);
+            }
+        }
+
+        // Check for Web Bluetooth support
+        if (!navigator.bluetooth) {
+            log('Web Bluetooth not supported. Use Chrome, Edge, or Opera.');
+            document.getElementById('connectBtn').disabled = true;
+        }
+
+        // Initialize video decoder
+        initVideoDecoder();
+
+        // Initialize UI
+        updateUI();
+    </script>
+</body>
+</html> 

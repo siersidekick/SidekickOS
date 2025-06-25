@@ -1,0 +1,18 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.espIdfPath": "/Users/henrywarren/esp/v5.4.1/esp-idf",
+  "idf.pythonInstallPath": "/opt/homebrew/bin/python3",
+  "idf.openOcdConfigs": [
+    "board/esp32s3-builtin.cfg"
+  ],
+  "idf.port": "/dev/tty.usbmodem2101",
+  "idf.toolsPath": "/Users/henrywarren/.espressif",
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32s3"
+  },
+  "files.associations": {
+    "esp_h264_enc_param.h": "c",
+    "event_groups.h": "c"
+  },
+  "idf.flashType": "UART"
+}
