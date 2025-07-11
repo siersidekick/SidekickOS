@@ -1,6 +1,6 @@
-# OpenSidekick Python Library
+# SidekickOS Python Library
 
-This directory contains the OpenSidekick Python library for ESP32S3 BLE camera interface.
+This directory contains the SidekickOS Python library for ESP32S3 BLE camera interface.
 
 ## Quick Start
 
@@ -23,8 +23,8 @@ For complete documentation, please see:
 ## Structure
 
 ```
-opensidekick-client/
-├── opensidekick/           # Main Python library
+sidekickos-client/
+├── sidekickos/           # Main Python library
 │   └── __init__.py        # ESP32Camera, ImageFrame classes
 ├── demos/                 # Example scripts
 │   ├── example_camera_usage.py
@@ -37,5 +37,5 @@ opensidekick-client/
 
 ```bash
 pip install -e .
-python -c "from opensidekick import ESP32Camera; print('✅ Installation successful!')"
+python -c "from sidekickos import ESP32Camera; print('✅ Installation successful!')"
 ``` 

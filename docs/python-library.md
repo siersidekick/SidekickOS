@@ -1,6 +1,6 @@
-# OpenSidekick Python Library
+# SidekickOS Python Library
 
-A Python library for interfacing with the OpenSidekick camera system. This library provides cross-platform support for Mac, Windows, and Linux using the `bleak` library.
+A Python library for interfacing with the SidekickOS camera system. This library provides cross-platform support for Mac, Windows, and Linux using the `bleak` library.
 
 ## Features
 
@@ -16,7 +16,7 @@ A Python library for interfacing with the OpenSidekick camera system. This libra
 
 ### Install as Library (Recommended)
 
-Install the opensidekick library directly:
+Install the sidekickos library directly:
 
 ```bash
 pip install -e .
@@ -25,8 +25,8 @@ pip install -e .
 Or for development:
 
 ```bash
-git clone https://github.com/henrywarren/OpenSidekick.git
-cd OpenSidekick/opensidekick-client
+git clone https://github.com/henrywarren/SidekickOS.git
+cd SidekickOS/sidekickos-client
 pip install -e .
 ```
 
@@ -50,7 +50,7 @@ pip install bleak pillow opencv-python ultralytics torch
 
 ```python
 import asyncio
-from opensidekick import ESP32Camera
+from sidekickos import ESP32Camera
 
 async def main():
     camera = ESP32Camera()
@@ -72,7 +72,7 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from opensidekick import ESP32Camera
+from sidekickos import ESP32Camera
 
 def frame_callback(frame):
     print(f"Frame {frame.frame_number}: {frame.size} bytes")

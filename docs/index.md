@@ -1,6 +1,6 @@
-# OpenSidekick Documentation
+# SidekickOS Documentation
 
-Welcome to the OpenSidekick documentation! This directory contains comprehensive guides for all aspects of the OpenSidekick smart glasses platform.
+Welcome to the SidekickOS documentation! This directory contains comprehensive guides for all aspects of the SidekickOS smart glasses platform.
 
 ## 📖 Documentation Index
 
@@ -19,7 +19,7 @@ Welcome to the OpenSidekick documentation! This directory contains comprehensive
 ## 🚀 Quick Navigation
 
 ### For Users
-1. **New to OpenSidekick?** → Start with [Main README](../README.md)
+1. **New to SidekickOS?** → Start with [Main README](../README.md)
 2. **Need hardware help?** → See [Hardware Setup](hardware.md)
 3. **Want to use Python?** → Check [Python Library](python-library.md)
 4. **Looking for examples?** → Browse [Demo Scripts](demos.md)
@@ -50,4 +50,4 @@ docs/
 
 ---
 
-**Turn any glasses into smart glasses with OpenSidekick! 🤓✨** 
+**Turn any glasses into smart glasses with SidekickOS! 🤓✨** 

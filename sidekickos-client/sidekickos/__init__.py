@@ -1,11 +1,11 @@
 """
-OpenSidekick BLE Camera Interface Module
+SidekickOS BLE Camera Interface Module
 
-A Python module for interfacing with OpenSidekick BLE camera (ESP32S3) for image capture and streaming.
+A Python module for interfacing with SidekickOS BLE camera (ESP32S3) for image capture and streaming.
 Compatible with Mac and PC using the bleak library.
 
 Usage:
-    from opensidekick import ESP32Camera
+    from sidekickos import ESP32Camera
     
     camera = ESP32Camera()
     await camera.connect()
@@ -39,7 +39,7 @@ AUDIO_CHAR_UUID = "33333333-4444-5555-6666-777777777777"
 
 # Constants
 MAX_CHUNK_SIZE = 510  # Updated for ultra-speed optimization
-DEVICE_NAME = "OpenSidekick"  # Updated device name
+DEVICE_NAME = "SidekickOS"  # Updated device name
 
 
 @dataclass
@@ -102,13 +102,13 @@ class ESP32Camera:
         }
     
     async def scan_for_device(self, timeout: float = 10.0) -> Optional[str]:
-        """Scan for OpenSidekick camera device"""
+        """Scan for SidekickOS camera device"""
         logger.info(f"Scanning for camera device...")
         
         devices = await BleakScanner.discover(timeout=timeout)
         
         # Look for both possible device names
-        possible_names = ["OpenSidekick", "Custom-Name-Here"]
+        possible_names = ["SidekickOS", "Custom-Name-Here"]
         
         for device in devices:
             if device.name:
@@ -126,7 +126,7 @@ class ESP32Camera:
         return None
     
     async def connect(self, device_address: Optional[str] = None, timeout: float = 10.0) -> bool:
-        """Connect to OpenSidekick camera"""
+        """Connect to SidekickOS camera"""
         try:
             if not device_address:
                 device_address = await self.scan_for_device(timeout)
@@ -189,7 +189,7 @@ class ESP32Camera:
             self.connected = True
             self.performance_stats['start_time'] = time.time()
             
-            logger.info("🎉 Successfully connected to OpenSidekick Ultra-Performance Camera!")
+            logger.info("🎉 Successfully connected to SidekickOS Ultra-Performance Camera!")
             logger.info(f"⚡ Ready for 517-byte MTU and {MAX_CHUNK_SIZE}-byte chunks")
             
             # Get initial status
@@ -206,7 +206,7 @@ class ESP32Camera:
         if self.client and self.connected:
             await self.client.disconnect()
             self.connected = False
-            logger.info("Disconnected from OpenSidekick camera")
+            logger.info("Disconnected from SidekickOS camera")
     
     async def send_command(self, command: str) -> bool:
         """Send command to ESP32S3"""

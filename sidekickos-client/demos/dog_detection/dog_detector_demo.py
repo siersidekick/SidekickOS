@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-🐕 OpenSidekick Dog Detection Demo
+🐕 SidekickOS Dog Detection Demo
 
 This demo uses the ESP32 BLE camera to automatically detect and capture photos of dogs.
-It combines real-time computer vision with the OpenSidekick camera system.
+It combines real-time computer vision with the SidekickOS camera system.
 
 Features:
 - Real-time dog detection using YOLOv5
@@ -34,7 +34,7 @@ import logging
 sys.path.append('../..')
 
 # Import our ESP32 camera module
-from opensidekick import ESP32Camera, ImageFrame
+from sidekickos import ESP32Camera, ImageFrame
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -246,7 +246,7 @@ class SmartDogCamera:
         
         try:
             # Connect to camera
-            print("📡 Connecting to OpenSidekick camera...")
+            print("📡 Connecting to SidekickOS camera...")
             if not await self.camera.connect():
                 print("❌ Failed to connect to camera")
                 return
@@ -383,10 +383,10 @@ class SmartDogCamera:
 
 async def main():
     """Main demo function"""
-    print("🐕 OpenSidekick Dog Detection Demo")
+    print("🐕 SidekickOS Dog Detection Demo")
     print("=" * 40)
     print("This demo will automatically detect and capture photos of dogs")
-    print("using your OpenSidekick camera and computer vision.")
+    print("using your SidekickOS camera and computer vision.")
     print()
     
     # Configuration

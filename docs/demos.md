@@ -1,10 +1,10 @@
-# OpenSidekick Demo Scripts
+# SidekickOS Demo Scripts
 
-This directory contains demonstration scripts for the OpenSidekick ESP32 camera system.
+This directory contains demonstration scripts for the SidekickOS ESP32 camera system.
 
 ## Prerequisites
 
-Install the opensidekick library:
+Install the sidekickos library:
 
 ```bash
 cd ..
@@ -29,7 +29,7 @@ Basic camera usage examples: single image capture, video streaming, performance 
 python example_camera_usage.py
 ```
 
-**opensidekick-web-client.html**
+**sidekickos-web-client.html**
 Web-based camera interface. Open in any web browser and follow instructions to connect.
 
 ### Dog Detection
@@ -55,7 +55,7 @@ python dog_detector_demo.py
 ### 🎥 Video Demo
 
 **Dog Detection in Action**
-Watch the OpenSidekick dog detection demo in action:
+Watch the SidekickOS dog detection demo in action:
 
 📹 **[Dog Detection Demo Video](https://drive.google.com/file/d/1LnD9ZVXxRB4CjpYO92vVTl6aJtVk8wdE/view?usp=sharing)**
 

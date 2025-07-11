@@ -68,7 +68,7 @@ static const char *TAG = "ESP32S3_CAMERA";
 
 
 #define GATTS_NUM_HANDLE_TEST_A     20
-#define TEST_DEVICE_NAME            "OpenSidekick"
+#define TEST_DEVICE_NAME            "SidekickOS"
 
 // Global variables
 static bool ble_device_connected = false;
@@ -1250,7 +1250,7 @@ static void check_connection_timeout(void)
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "OpenSidekick Camera & Audio Streamer Starting...");
+    ESP_LOGI(TAG, "SidekickOS Camera & Audio Streamer Starting...");
     ESP_LOGI(TAG, "======================================");
 
     // Initialize POSIX stub functions for H.264 library compatibility

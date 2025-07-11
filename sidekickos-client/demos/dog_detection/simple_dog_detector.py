@@ -14,7 +14,7 @@ from pathlib import Path
 
 # Add parent directories to path for imports
 sys.path.append('../..')
-from opensidekick import ESP32Camera
+from sidekickos import ESP32Camera
 from dog_detector_demo import DogDetector
 
 class SimpleDogDetector:

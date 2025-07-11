@@ -1,15 +1,15 @@
-# OpenSidekick - Open Source Smart Glasses
+# SidekickOS - Open Source Smart Glasses
 
 An open-source implementation of smart glasses functionality, inspired by the [SIER Sidekick](https://siertech.com). Transform any glasses into smart glasses with camera capture, audio streaming, and AI assistance capabilities.
 
-![OpenSidekick Demo](https://img.shields.io/badge/Status-Active%20Development-green)
+![SidekickOS Demo](https://img.shields.io/badge/Status-Active%20Development-green)
 ![ESP32S3](https://img.shields.io/badge/Hardware-ESP32S3-blue)
 ![BLE](https://img.shields.io/badge/Connectivity-BLE%205.0-lightblue)
 ![Python](https://img.shields.io/badge/Client-Python%20%7C%20Web-orange)
 
-## 🎯 **What is OpenSidekick?**
+## 🎯 **What is SidekickOS?**
 
-OpenSidekick is an open-source smart glasses platform that provides:
+SidekickOS is an open-source smart glasses platform that provides:
 
 - **📷 High-Resolution Camera Capture** - Up to 1600x1200 native
 - **🎤 Audio Streaming** - G.711 μ-law encoded audio over BLE (Work in Progress)
@@ -28,6 +28,7 @@ This project is developed in collaboration with [SIER Technologies](https://sier
 - Hands-free operation
 
 
+
 ## 🚀 **Quick Start**
 
 ### **1. Hardware Setup**
@@ -42,8 +43,8 @@ This project is developed in collaboration with [SIER Technologies](https://sier
 
 ```bash
 # Clone the repository
-git clone https://github.com/siersidekick/opensidekick.git
-cd opensidekick/firmware
+git clone https://github.com/siersidekick/SidekickOS.git
+cd sidekickos/firmware
 
 # Install ESP-IDF (if not already installed)
 # Follow: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/
@@ -57,21 +58,21 @@ idf.py flash monitor
 
 **Python Client:**
 ```bash
-cd opensidekick-client
+cd sidekickos-client
 pip install -e .
 python demos/example_camera_usage.py
 ```
 
 **Web Client:**
 ```bash
-# Simply open demos/opensidekick-web-client.html in a modern desktop browser
+# Simply open demos/sidekickos-web-client.html in a modern desktop browser
 # Requires Web Bluetooth API support (Chrome/Edge on desktop only)
 # Note: iOS Safari and mobile browsers do not support Web Bluetooth
 ```
 
 ## 📱 **Client Applications**
 
-### **Python Client (`opensidekick-client/`)**
+### **Python Client (`sidekickos-client/`)**
 
 **Features:**
 - Full camera control and streaming
@@ -82,7 +83,7 @@ python demos/example_camera_usage.py
 
 **Usage:**
 ```python
-from opensidekick import ESP32Camera
+from sidekickos import ESP32Camera
 
 camera = ESP32Camera()
 await camera.connect()
@@ -90,7 +91,7 @@ image = await camera.capture_image()
 image.save("photo.jpg")
 ```
 
-### **Web Client (`opensidekick-client/opensidekick-web-client.html`)**
+### **Web Client (`sidekickos-client/sidekickos-web-client.html`)**
 
 **Features:**
 - Browser-based interface (no installation required)
@@ -100,7 +101,7 @@ image.save("photo.jpg")
 - Desktop compatible (Chrome/Edge only, no iOS/mobile browser support)
 
 **Usage:**
-1. Open `opensidekick-client/opensidekick-web-client.html` in Chrome/Edge (desktop only)
+1. Open `sidekickos-client/sidekickos-web-client.html` in Chrome/Edge (desktop only)
 2. Click "Connect to Camera"
 3. Start capturing photos or streaming video
 
@@ -138,7 +139,7 @@ image.save("photo.jpg")
 ```python
 # Python
 import asyncio
-from opensidekick import ESP32Camera
+from sidekickos import ESP32Camera
 
 async def take_photo():
     camera = ESP32Camera()
@@ -171,7 +172,7 @@ await camera.stop_streaming()
 
 ### **🐕 Smart Dog Detection Demo**
 ```bash
-cd opensidekick-client
+cd sidekickos-client
 pip install -e .
 python demos/dog_detection/simple_dog_detector.py
 ```
@@ -191,7 +192,7 @@ idf.py monitor     # View serial output
 
 ### **Client Development**
 ```bash
-cd opensidekick-client
+cd sidekickos-client
 pip install -e .   # Install in development mode
 python -m pytest   # Run tests (if available)
 ```
@@ -204,7 +205,7 @@ python -m pytest   # Run tests (if available)
 3. Update protocol documentation
 
 **Client Side:**
-1. Extend `ESP32Camera` class in `opensidekick/__init__.py`
+1. Extend `ESP32Camera` class in `sidekickos/__init__.py`
 2. Add new methods and callbacks
 3. Update examples and documentation
 
@@ -244,7 +245,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ### **🐕 Dog Detection Demo**
 ```bash
-cd opensidekick-client
+cd sidekickos-client
 pip install -e .
 python demos/dog_detection/simple_dog_detector.py
 ```
@@ -304,4 +305,4 @@ Comprehensive documentation is available in the `docs/` directory:
 
 ---
 
-**Turn any glasses into smart glasses with OpenSidekick! 🤓✨**
+**Turn any glasses into smart glasses with SidekickOS! 🤓✨**

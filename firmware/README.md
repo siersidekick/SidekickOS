@@ -1,6 +1,6 @@
-# OpenSidekick ESP32S3 Firmware
+# SidekickOS ESP32S3 Firmware
 
-This directory contains the ESP32S3 firmware for the OpenSidekick smart glasses project.
+This directory contains the ESP32S3 firmware for the SidekickOS smart glasses project.
 
 ## 🚀 **Quick Start**
 
@@ -60,7 +60,7 @@ source export.sh
 
 ### **2. Build Firmware**
 ```bash
-cd opensidekick/firmware
+cd sidekickos/firmware
 
 # Configure (optional - defaults are optimized)
 idf.py menuconfig
@@ -124,4 +124,4 @@ idf.py monitor | tee debug.log
 
 ---
 
-**Part of the OpenSidekick open-source smart glasses project 🤓** 
+**Part of the SidekickOS open-source smart glasses project 🤓** 

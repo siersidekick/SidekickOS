@@ -1,8 +1,8 @@
-# Firmware Guide - OpenSidekick ESP32S3
+# Firmware Guide - SidekickOS ESP32S3
 
 ## 🚀 **Overview**
 
-The OpenSidekick firmware is built on ESP-IDF (Espressif IoT Development Framework) and provides:
+The SidekickOS firmware is built on ESP-IDF (Espressif IoT Development Framework) and provides:
 - High-performance camera capture and streaming
 - Optimized BLE 5.0 communication with 517-byte MTU
 - Advanced power management and performance optimization
@@ -14,7 +14,7 @@ The OpenSidekick firmware is built on ESP-IDF (Espressif IoT Development Framewo
 ### **Core Components**
 
 ```
-OpenSidekick Firmware Architecture
+SidekickOS Firmware Architecture
 ┌─────────────────────────────────────────┐
 │                main.c                   │
 ├─────────────────────────────────────────┤
@@ -74,7 +74,7 @@ source export.sh
 
 ```bash
 # Navigate to firmware directory
-cd opensidekick/firmware
+cd sidekickos/firmware
 
 # Configure project (optional - defaults are optimized)
 idf.py menuconfig
@@ -423,7 +423,7 @@ ESP_LOGI(TAG, "Frame %lu: %zu bytes in %lu ms", frame_count, fb->len, capture_ti
 
 ```bash
 # Check current version
-idf.py monitor | grep "OpenSidekick.*Starting"
+idf.py monitor | grep "SidekickOS.*Starting"
 
 # Update to latest
 git pull origin main

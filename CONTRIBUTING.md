@@ -1,6 +1,6 @@
-# Contributing to OpenSidekick
+# Contributing to SidekickOS
 
-We welcome contributions to the OpenSidekick project! This guide will help you get started.
+We welcome contributions to the SidekickOS project! This guide will help you get started.
 
 ## 🤝 **How to Contribute**
 
@@ -44,11 +44,11 @@ We welcome all types of contributions:
 ```bash
 # Fork the repository on GitHub
 # Then clone your fork
-git clone https://github.com/yourusername/opensidekick.git
-cd opensidekick
+git clone https://github.com/siersidekick/sidekickos.git
+cd sidekickos
 
 # Add upstream remote
-git remote add upstream https://github.com/originalowner/opensidekick.git
+git remote add upstream https://github.com/siersidekick/sidekickos.git
 ```
 
 ### **2. Set Up Development Environment**
@@ -62,14 +62,14 @@ cd esp-idf
 source export.sh
 
 # Build and test
-cd opensidekick/firmware
+cd sidekickos/firmware
 idf.py build
 ```
 
 **For Client Development:**
 ```bash
 # Install Python dependencies
-cd opensidekick/opensidekick-client
+cd sidekickos/sidekickos-client
 pip install -r requirements.txt
 pip install -e .
 
@@ -344,7 +344,7 @@ Project maintainers are responsible for clarifying standards and will take appro
 
 ## 🙏 **Thank You**
 
-Thank you for contributing to OpenSidekick! Your contributions help make smart glasses technology accessible to everyone.
+Thank you for contributing to SidekickOS! Your contributions help make smart glasses technology accessible to everyone.
 
 ---
 

@@ -9,13 +9,13 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
     requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 setup(
-    name="opensidekick",
+    name="sidekickos",
     version="1.0.0",
-    author="OpenSidekick Team",
+    author="SidekickOS Team",
     description="Python library for ESP32S3 BLE camera interface",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/henrywarren/OpenSidekick",
+    url="https://github.com/henrywarren/SidekickOS",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -35,8 +35,8 @@ setup(
     install_requires=requirements,
     keywords="esp32 camera ble bluetooth image capture opencv",
     project_urls={
-        "Bug Reports": "https://github.com/henrywarren/OpenSidekick/issues",
-        "Source": "https://github.com/henrywarren/OpenSidekick",
-        "Documentation": "https://github.com/henrywarren/OpenSidekick/blob/main/README.md",
+        "Bug Reports": "https://github.com/henrywarren/SidekickOS/issues",
+        "Source": "https://github.com/henrywarren/SidekickOS",
+        "Documentation": "https://github.com/henrywarren/SidekickOS/blob/main/README.md",
     },
 ) 

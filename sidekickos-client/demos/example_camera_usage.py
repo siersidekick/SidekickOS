@@ -22,7 +22,7 @@ from datetime import datetime
 
 # Add parent directory to path for imports
 sys.path.append('..')
-from opensidekick import ESP32Camera, ImageFrame
+from sidekickos import ESP32Camera, ImageFrame
 
 
 async def capture_single_image():
@@ -34,7 +34,7 @@ async def capture_single_image():
     
     try:
         # Connect to camera
-        print("Connecting to OpenSidekick camera...")
+        print("Connecting to SidekickOS camera...")
         if not await camera.connect():
             print("❌ Failed to connect to camera")
             return
@@ -99,7 +99,7 @@ async def stream_video():
     
     try:
         # Connect to camera
-        print("Connecting to OpenSidekick camera...")
+        print("Connecting to SidekickOS camera...")
         if not await camera.connect():
             print("❌ Failed to connect to camera")
             return
@@ -148,7 +148,7 @@ async def performance_test():
     
     try:
         # Connect to camera
-        print("Connecting to OpenSidekick camera...")
+        print("Connecting to SidekickOS camera...")
         if not await camera.connect():
             print("❌ Failed to connect to camera")
             return
@@ -207,7 +207,7 @@ async def interactive_mode():
     
     try:
         # Connect to camera
-        print("Connecting to OpenSidekick camera...")
+        print("Connecting to SidekickOS camera...")
         if not await camera.connect():
             print("❌ Failed to connect to camera")
             return
@@ -279,9 +279,9 @@ async def interactive_mode():
 
 async def main():
     """Main function with menu"""
-    print("🤖 OpenSidekick BLE Camera Python Interface")
+    print("🤖 SidekickOS BLE Camera Python Interface")
     print("=" * 50)
-    print("Make sure your OpenSidekick camera is powered on and advertising!")
+    print("Make sure your SidekickOS camera is powered on and advertising!")
     print()
     
     while True:

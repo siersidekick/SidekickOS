@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenSidekick BLE Frame Streamer</title>
+    <title>SidekickOS BLE Frame Streamer</title>
     <style>
         * {
             margin: 0;
@@ -424,7 +424,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 OpenSidekick BLE Ultra-Speed Camera & Audio</h1>
+            <h1>🚀 SidekickOS BLE Ultra-Speed Camera & Audio</h1>
             <p>BLE 5.0 + Data Length Extension + 510-byte chunks + 7.5ms intervals</p>
             <div style="background: linear-gradient(45deg, #ff6b6b, #feca57); color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; margin-top: 10px; display: inline-block;">
                 ⚡ ULTRA PERFORMANCE MODE ⚡
@@ -552,7 +552,7 @@
             <h3>Live Frames</h3>
             <div class="frame-display" id="frameDisplay">
                 <div class="frame-placeholder" id="framePlaceholder">
-                    Connect to OpenSidekick to see live frames
+                    Connect to SidekickOS to see live frames
                 </div>
                 <div class="frame-info" id="frameInfo" style="display: none;">
                     Frame: -- | Size: --
@@ -571,7 +571,7 @@
 
         <div class="pyscript-panel">
             <h3>PyScript Applications</h3>
-            <p>Create custom applications using Python that interact with the OpenSidekick frame streamer:</p>
+            <p>Create custom applications using Python that interact with the SidekickOS frame streamer:</p>
             
             <div class="input-group">
                 <label>Application Name</label>
@@ -619,7 +619,7 @@ motion_detector()"></textarea>
         </div>
 
         <div class="log-container" id="logContainer">
-            <div>🚀 OpenSidekick Ultra-Speed Frame Streamer Log</div>
+            <div>🚀 SidekickOS Ultra-Speed Frame Streamer Log</div>
             <div>⚡ BLE 5.0 + DLE + 510-byte chunks + 7.5ms intervals ready</div>
             <div>🎯 Target: 400-600+ kbps, 25-50 FPS performance</div>
             <div>Ready to connect...</div>
@@ -809,7 +809,7 @@ document.pyExecuteUserCode = js_execute_user_code
                     log('Found ESP32 device! This looks promising.');
                     showNotification(`Found: ${device.name}`, 'success');
                 } else {
-                    log('This device might not be the OpenSidekick. Look for "OpenSidekick" in the list.');
+                    log('This device might not be the SidekickOS. Look for "SidekickOS" in the list.');
                     showNotification(`Found: ${device.name || 'Unnamed device'}`, 'warning');
                 }
                 
@@ -842,7 +842,7 @@ document.pyExecuteUserCode = js_execute_user_code
                 }
                 
                 log('✅ Bluetooth is available');
-                log('✅ Ready to scan for OpenSidekick');
+                log('✅ Ready to scan for SidekickOS');
                 
             } catch (error) {
                 log('Error checking Bluetooth availability: ' + error.message);
@@ -873,8 +873,8 @@ document.pyExecuteUserCode = js_execute_user_code
                     // First try by service UUID
                     filters: [
                         { services: [BLE_SERVICE_UUID] },
-                        { name: "OpenSidekick" },
-                        { namePrefix: "OpenSidekick" }
+                        { name: "SidekickOS" },
+                        { namePrefix: "SidekickOS" }
                     ],
                     optionalServices: [BLE_SERVICE_UUID]
                 };
@@ -1039,7 +1039,7 @@ document.pyExecuteUserCode = js_execute_user_code
                 
                 log('🎉 BLE connected successfully with ultra-speed optimizations!');
                 log(`⚡ Ready for 510-byte chunks and maximum throughput`);
-                showNotification('Connected to OpenSidekick Ultra-Speed via BLE', 'success');
+                showNotification('Connected to SidekickOS Ultra-Speed via BLE', 'success');
                 
             } catch (error) {
                 log('BLE connection failed: ' + error.message);
@@ -1047,9 +1047,9 @@ document.pyExecuteUserCode = js_execute_user_code
                 
                 // Additional debugging info
                 if (error.message.includes('No devices found')) {
-                    showNotification('No OpenSidekick devices found. Make sure device is powered on and advertising.', 'warning');
-                    log('Debug: Check that OpenSidekick is powered on, BLE is enabled, and device is advertising');
-                    log('Debug: Try restarting the OpenSidekick device');
+                    showNotification('No SidekickOS devices found. Make sure device is powered on and advertising.', 'warning');
+                    log('Debug: Check that SidekickOS is powered on, BLE is enabled, and device is advertising');
+                    log('Debug: Try restarting the SidekickOS device');
                 }
             }
         }

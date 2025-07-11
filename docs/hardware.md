@@ -1,4 +1,4 @@
-# Hardware Guide - OpenSidekick
+# Hardware Guide - SidekickOS
 
 ## 🔧 **Required Hardware**
 
