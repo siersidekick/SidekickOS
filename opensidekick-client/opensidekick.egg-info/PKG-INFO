@@ -1,3 +1,45 @@
+Metadata-Version: 2.4
+Name: opensidekick
+Version: 1.0.0
+Summary: Python library for ESP32S3 BLE camera interface
+Home-page: https://github.com/henrywarren/OpenSidekick
+Author: OpenSidekick Team
+Project-URL: Bug Reports, https://github.com/henrywarren/OpenSidekick/issues
+Project-URL: Source, https://github.com/henrywarren/OpenSidekick
+Project-URL: Documentation, https://github.com/henrywarren/OpenSidekick/blob/main/README.md
+Keywords: esp32 camera ble bluetooth image capture opencv
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Multimedia :: Graphics :: Capture :: Digital Camera
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: bleak>=0.21.0
+Requires-Dist: pillow>=9.0.0
+Requires-Dist: opencv-python>=4.8.0
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: torch<2.2.0,>=2.0.0
+Requires-Dist: torchvision<0.17.0,>=0.15.0
+Requires-Dist: ultralytics>=8.0.0
+Dynamic: author
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: project-url
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
 # OpenSidekick Python Library
 
 A Python library for interfacing with the OpenSidekick camera system. This library provides cross-platform support for Mac, Windows, and Linux using the `bleak` library.

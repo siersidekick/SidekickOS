@@ -27,26 +27,6 @@ This project is developed in collaboration with [SIER Technologies](https://sier
 - Live streaming capabilities (through client apps)
 - Hands-free operation
 
-## 🏗️ **Project Structure**
-
-```
-opensidekick/
-├── firmware/                    # ESP32S3 firmware
-│   ├── main/                   # Main ESP-IDF application
-│   ├── components/             # Custom components
-│   ├── managed_components/     # ESP component dependencies
-│   └── CMakeLists.txt         # Build configuration
-├── opensidekick-client/        # Client applications
-│   ├── esp32_ble_camera.py    # Python BLE client library
-│   ├── example_camera_usage.py # Python examples
-│   ├── practical_high_res.py  # High-resolution capture
-│   ├── opensidekick-web-client.html # Web browser client
-│   ├── react-native/          # React Native mobile app (in development)
-│   └── README_Python.md       # Python client documentation
-├── archive/                    # Archived versions
-├── audio_example/              # Audio processing examples
-└── docs/                      # Documentation
-```
 
 ## 🚀 **Quick Start**
 
@@ -62,7 +42,7 @@ opensidekick/
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/opensidekick.git
+git clone https://github.com/siersidekick/opensidekick.git
 cd opensidekick/firmware
 
 # Install ESP-IDF (if not already installed)
@@ -78,13 +58,13 @@ idf.py flash monitor
 **Python Client:**
 ```bash
 cd opensidekick-client
-pip install -r requirements.txt
-python example_camera_usage.py
+pip install -e .
+python demos/example_camera_usage.py
 ```
 
 **Web Client:**
 ```bash
-# Simply open opensidekick-web-client.html in a modern desktop browser
+# Simply open demos/opensidekick-web-client.html in a modern desktop browser
 # Requires Web Bluetooth API support (Chrome/Edge on desktop only)
 # Note: iOS Safari and mobile browsers do not support Web Bluetooth
 ```
@@ -102,7 +82,7 @@ python example_camera_usage.py
 
 **Usage:**
 ```python
-from esp32_ble_camera import ESP32Camera
+from opensidekick import ESP32Camera
 
 camera = ESP32Camera()
 await camera.connect()
@@ -110,7 +90,7 @@ image = await camera.capture_image()
 image.save("photo.jpg")
 ```
 
-### **Web Client (`opensidekick-web-client.html`)**
+### **Web Client (`opensidekick-client/opensidekick-web-client.html`)**
 
 **Features:**
 - Browser-based interface (no installation required)
@@ -120,14 +100,14 @@ image.save("photo.jpg")
 - Desktop compatible (Chrome/Edge only, no iOS/mobile browser support)
 
 **Usage:**
-1. Open `opensidekick-web-client.html` in Chrome/Edge (desktop only)
+1. Open `opensidekick-client/opensidekick-web-client.html` in Chrome/Edge (desktop only)
 2. Click "Connect to Camera"
 3. Start capturing photos or streaming video
 
 **Mobile App (React Native):**
 - iOS and Android app in development
 - Will provide full mobile BLE support
-- Expected release: Q1 2025
+- Expected release: next few months
 
 ## 🔧 **Technical Specifications**
 
@@ -158,7 +138,7 @@ image.save("photo.jpg")
 ```python
 # Python
 import asyncio
-from esp32_ble_camera import ESP32Camera
+from opensidekick import ESP32Camera
 
 async def take_photo():
     camera = ESP32Camera()
@@ -189,10 +169,17 @@ await asyncio.sleep(10)  # Stream for 10 seconds
 await camera.stop_streaming()
 ```
 
+### **🐕 Smart Dog Detection Demo**
+```bash
+cd opensidekick-client
+pip install -e .
+python demos/dog_detection/simple_dog_detector.py
+```
+
 ### **High-Resolution Capture**
-```python
+```bash
 # Capture and upscale to 1920x1080
-python practical_high_res.py
+python demos/practical_high_res.py
 # Choose option 2 for full 1920x1080 workflow
 ```
 
@@ -222,7 +209,7 @@ python -m pytest   # Run tests (if available)
 3. Update protocol documentation
 
 **Client Side:**
-1. Extend `ESP32Camera` class in `esp32_ble_camera.py`
+1. Extend `ESP32Camera` class in `opensidekick/__init__.py`
 2. Add new methods and callbacks
 3. Update examples and documentation
 
@@ -252,10 +239,22 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 **Areas for Contribution:**
 - AI integration (ChatGPT, local models)
+- Computer vision demos (expand beyond dog detection)
 - React Native mobile app development
 - Audio streaming improvements
 - Performance optimizations
 - Documentation improvements
+
+## 🤖 **AI-Powered Demos**
+
+### **🐕 Dog Detection Demo**
+```bash
+cd opensidekick-client
+pip install -e .
+python demos/dog_detection/simple_dog_detector.py
+```
+
+Detects dogs and saves photos with bounding boxes.
 
 ## 📄 **License**
 

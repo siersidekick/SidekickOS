@@ -94,6 +94,9 @@ void initCamera();
 void initMicrophone();
 void initBLE();
 
+// Add cleanup function declaration
+void cleanupOnDisconnect();
+
 class MyBLEServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) {
     bleDeviceConnected = true;
@@ -102,9 +105,14 @@ class MyBLEServerCallbacks: public BLEServerCallbacks {
   }
 
   void onDisconnect(BLEServer* pServer) {
-    bleDeviceConnected = false;
     Serial.println("BLE Client disconnected");
+    
+    // Comprehensive cleanup on disconnect
+    cleanupOnDisconnect();
+    
+    // Restart advertising after cleanup
     pServer->startAdvertising();
+    Serial.println("Advertising restarted after disconnect");
   }
 };
 
@@ -711,4 +719,40 @@ void saveConfig() {
     file.close();
     Serial.println("Configuration saved");
   }
+}
+
+// Add the cleanup function before the BLE callbacks
+void cleanupOnDisconnect() {
+  Serial.println("Cleaning up resources on disconnect...");
+  
+  // Reset connection state
+  bleDeviceConnected = false;
+  
+  // Stop all streaming activities
+  frameStreamingEnabled = false;
+  audioStreamingEnabled = false;
+  
+  // Reset frame capture flag
+  sendingFrame = false;
+  
+  // Reset frame interval to default (conservative on disconnect)
+  frameInterval = 1.0f;  // 1 second default
+  
+  // Reset image quality to default
+  imageQuality = 25;
+  
+  // Reset frame size to safe default
+  currentFrameSize = FRAMESIZE_QVGA;  // Safe default size
+  
+  // Reset camera settings to safe defaults
+  sensor_t* s = esp_camera_sensor_get();
+  if (s) {
+    s->set_quality(s, imageQuality);
+    s->set_framesize(s, currentFrameSize);
+  }
+  
+  // Give system time to process cleanup
+  delay(50);
+  
+  Serial.println("Disconnect cleanup completed");
 }

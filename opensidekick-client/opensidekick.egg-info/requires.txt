@@ -1,0 +1,7 @@
+bleak>=0.21.0
+pillow>=9.0.0
+opencv-python>=4.8.0
+numpy>=1.21.0
+torch<2.2.0,>=2.0.0
+torchvision<0.17.0,>=0.15.0
+ultralytics>=8.0.0

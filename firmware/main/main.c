@@ -86,6 +86,10 @@ static uint8_t* mulaw_buffer = NULL;  // Buffer for μ-law encoded audio
 static bool audio_initialized = false;
 static bool i2s_driver_installed = false;
 
+// Add timeout variables near other static variables
+static uint32_t last_activity_time = 0;
+static const uint32_t CONNECTION_TIMEOUT_MS = 30000; // 30 seconds timeout
+
 // G.711 μ-law encoding functions
 // Convert 16-bit linear PCM to 8-bit μ-law (based on reference implementation)
 static uint8_t linear_to_mulaw(int16_t pcm_val) {
@@ -154,6 +158,10 @@ static void audio_task(void *pvParameters);
 static void send_audio_data(void);
 static void boost_cpu_performance(void);
 static void optimize_ble_timing(void);
+
+// Add cleanup function declaration near other function declarations
+static void cleanup_on_disconnect(void);
+static void check_connection_timeout(void);
 
 static struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = {
     [PROFILE_A_APP_ID] = {
@@ -386,6 +394,9 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         ESP_LOGI(TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %d, handle %d", 
                  (int)param->write.conn_id, (int)param->write.trans_id, (int)param->write.handle);
         
+        // Update activity timer on any write
+        last_activity_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        
         if (!param->write.is_prep) {
             ESP_LOGI(TAG, "GATT_WRITE_EVT, value len %d", param->write.len);
             
@@ -414,6 +425,9 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         gatts_if = gatts_if_param;
         ble_device_connected = true;
         
+        // Reset activity timer on connect
+        last_activity_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        
         // Set maximum MTU for Data Length Extension (DLE)
         esp_err_t mtu_ret = esp_ble_gatt_set_local_mtu(517);
         if (mtu_ret == ESP_OK) {
@@ -431,8 +445,17 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         
     case ESP_GATTS_DISCONNECT_EVT:
         ESP_LOGI(TAG, "ESP_GATTS_DISCONNECT_EVT, reason = %d", param->disconnect.reason);
-        ble_device_connected = false;
-        esp_ble_gap_start_advertising(&adv_params);
+        
+        // Comprehensive cleanup on disconnect
+        cleanup_on_disconnect();
+        
+        // Restart advertising after cleanup
+        esp_err_t adv_ret = esp_ble_gap_start_advertising(&adv_params);
+        if (adv_ret != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to restart advertising after disconnect: %s", esp_err_to_name(adv_ret));
+        } else {
+            ESP_LOGI(TAG, "Advertising restarted after disconnect");
+        }
         break;
         
     case ESP_GATTS_MTU_EVT:
@@ -741,77 +764,61 @@ static void init_ble(void)
 
 static void streaming_task(void *pvParameters)
 {
-    ESP_LOGI(TAG, "Streaming task started on core %d", xPortGetCoreID());
-    ESP_LOGI(TAG, "Task stack size: %d bytes", uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
+    ESP_LOGI(TAG, "Streaming task started");
     
-    TickType_t last_frame_time = 0;
-    uint32_t frame_count = 0;
-    uint32_t failed_frames = 0;
+    // Add this task to the watchdog timer
+    esp_task_wdt_add(NULL);
     
     while (true) {
-        TickType_t current_time = xTaskGetTickCount();
+        esp_task_wdt_reset();
         
-        // Handle continuous frame streaming with frame rate control
+        // Check for connection timeout
+        check_connection_timeout();
+        
+        // Handle frame streaming
         if (frame_streaming_enabled && ble_device_connected) {
-            // Control frame rate based on frame_interval
-            if (current_time - last_frame_time >= pdMS_TO_TICKS((int)(frame_interval * 1000))) {
-                
-                // Capture frame from camera
-                camera_fb_t *fb = esp_camera_fb_get();
-                if (!fb) {
-                    ESP_LOGW(TAG, "Camera capture failed");
-                    failed_frames++;
-                    last_frame_time = current_time;
-                    vTaskDelay(pdMS_TO_TICKS(20)); // Faster retry
-                    continue;
-                }
-                
-                ESP_LOGI(TAG, "Captured streaming frame %lu: %zu bytes (%dx%d)", 
-                        frame_count, fb->len, fb->width, fb->height);
-                
-                // Send JPEG image for streaming
-                send_image_chunks(fb->buf, fb->len, frame_handle, true);
-                
-                esp_camera_fb_return(fb);
-                last_frame_time = current_time;
-                frame_count++;
-                
-                // Conservative task management like Arduino project
-                if (frame_count % 10 == 0) {
-                    ESP_LOGI(TAG, "Streaming stats: %lu frames, %lu failed, free heap: %zu", 
-                            frame_count, failed_frames, heap_caps_get_free_size(MALLOC_CAP_8BIT));
-                    
-                    // Stack monitoring like Arduino watchdog approach
-                    UBaseType_t stack_remaining = uxTaskGetStackHighWaterMark(NULL);
-                    if (stack_remaining < 1000) {  // Warning if less than 1KB stack remaining
-                        ESP_LOGW(TAG, "Low stack warning: %d bytes remaining", stack_remaining * sizeof(StackType_t));
-                    }
-                }
-            }
-        }
-        
-        // Handle single capture requests
-        if (capture_image_requested && ble_device_connected) {
-            capture_image_requested = false; // Reset flag
-            ESP_LOGI(TAG, "Processing single capture request");
+            // Update activity timer when streaming
+            last_activity_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
             
-            // Capture frame from camera
-            camera_fb_t *fb = esp_camera_fb_get();
-            if (!fb) {
-                ESP_LOGW(TAG, "Camera capture failed for single image");
-            } else {
-                ESP_LOGI(TAG, "Captured single image: %zu bytes (%dx%d)", 
-                        fb->len, fb->width, fb->height);
-                
-                // Send JPEG image for single capture
-                send_image_chunks(fb->buf, fb->len, image_handle, false);
-                
-                esp_camera_fb_return(fb);
+            if (xSemaphoreTake(camera_mutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
+                camera_fb_t *fb = esp_camera_fb_get();
+                if (fb) {
+                    ESP_LOGI(TAG, "Frame captured: %zu bytes", fb->len);
+                    send_image_chunks(fb->buf, fb->len, frame_handle, true);
+                    esp_camera_fb_return(fb);
+                } else {
+                    ESP_LOGW(TAG, "Failed to capture frame");
+                }
+                xSemaphoreGive(camera_mutex);
             }
         }
         
-        // Conservative delay to prevent overwhelming system
-        vTaskDelay(pdMS_TO_TICKS(10)); // Reduced from 20ms to 10ms for higher frame rate capability
+        // Handle single image capture
+        if (capture_image_requested && ble_device_connected) {
+            capture_image_requested = false;
+            
+            // Update activity timer when capturing
+            last_activity_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+            
+            if (xSemaphoreTake(camera_mutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
+                ESP_LOGI(TAG, "Single image capture requested");
+                
+                camera_fb_t *fb = esp_camera_fb_get();
+                if (fb) {
+                    ESP_LOGI(TAG, "Image captured: %zu bytes", fb->len);
+                    send_image_chunks(fb->buf, fb->len, image_handle, false);
+                    esp_camera_fb_return(fb);
+                } else {
+                    ESP_LOGW(TAG, "Failed to capture image");
+                }
+                xSemaphoreGive(camera_mutex);
+            }
+        }
+        
+        // Variable delay based on frame interval
+        uint32_t delay_ms = (uint32_t)(frame_interval * 1000);
+        delay_ms = (delay_ms < 10) ? 10 : delay_ms; // Minimum 10ms delay
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
     }
 }
 
@@ -1062,32 +1069,18 @@ static void audio_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "Audio task started on core %d", xPortGetCoreID());
     
-    TickType_t last_audio_time = 0;
-    const TickType_t audio_interval = pdMS_TO_TICKS(100); // Reduced from 125ms to 100ms = 10 audio packets/sec for better bandwidth
-    uint32_t audio_attempts = 0;
+    // Add this task to the watchdog timer
+    esp_task_wdt_add(NULL);
     
     while (true) {
-        TickType_t current_time = xTaskGetTickCount();
+        esp_task_wdt_reset();
         
-        if (audio_streaming_enabled && ble_device_connected && audio_initialized) {
-            if (current_time - last_audio_time >= audio_interval) {
-                audio_attempts++;
-                if (audio_attempts % 10 == 1) { // Log every 10th attempt (once per second with 100ms intervals)
-                    ESP_LOGI(TAG, "μ-law audio streaming active, attempt #%lu", audio_attempts);
-                }
-                send_audio_data();
-                last_audio_time = current_time;
-            }
-        } else {
-            // Log why audio isn't streaming (but not too frequently)
-            if (audio_attempts % 100 == 0) {
-                ESP_LOGD(TAG, "Audio not streaming: enabled=%d, ble=%d, init=%d", 
-                        audio_streaming_enabled, ble_device_connected, audio_initialized);
-            }
-            audio_attempts++;
+        if (audio_streaming_enabled && ble_device_connected) {
+            send_audio_data();
         }
         
-        vTaskDelay(pdMS_TO_TICKS(25)); // Slightly longer delay to reduce CPU load
+        // 20ms delay for audio streaming (50 FPS audio frames)
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
 
@@ -1191,6 +1184,70 @@ static void optimize_ble_timing(void)
     }
 }
 
+// Add the cleanup function before the existing event handlers
+static void cleanup_on_disconnect(void)
+{
+    ESP_LOGI(TAG, "Cleaning up resources on disconnect...");
+    
+    // Reset connection state
+    ble_device_connected = false;
+    
+    // Stop all streaming activities
+    frame_streaming_enabled = false;
+    audio_streaming_enabled = false;
+    
+    // Reset capture flags
+    capture_image_requested = false;
+    
+    // Clear connection handles
+    conn_id = 0;
+    gatts_if = ESP_GATT_IF_NONE;
+    
+    // Reset frame interval to default (can be conservative on disconnect)
+    frame_interval = 1.0f;  // 1 second default
+    
+    // Reset image quality to default
+    image_quality = 25;
+    
+    // Reset camera settings to safe defaults
+    sensor_t* s = esp_camera_sensor_get();
+    if (s) {
+        s->set_quality(s, image_quality);
+        s->set_framesize(s, FRAMESIZE_QVGA);  // Safe default size
+        current_frame_size = FRAMESIZE_QVGA;
+    }
+    
+    // Give system time to process cleanup
+    vTaskDelay(pdMS_TO_TICKS(10));
+    
+    ESP_LOGI(TAG, "Disconnect cleanup completed");
+}
+
+// Add timeout check function
+static void check_connection_timeout(void)
+{
+    if (!ble_device_connected) {
+        return; // Not connected, no need to check
+    }
+    
+    uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    if (current_time - last_activity_time > CONNECTION_TIMEOUT_MS) {
+        ESP_LOGW(TAG, "Connection timeout detected - no activity for %lu ms", (unsigned long)CONNECTION_TIMEOUT_MS);
+        ESP_LOGW(TAG, "Forcing disconnect cleanup");
+        
+        // Force disconnect cleanup
+        cleanup_on_disconnect();
+        
+        // Restart advertising
+        esp_err_t adv_ret = esp_ble_gap_start_advertising(&adv_params);
+        if (adv_ret != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to restart advertising after timeout: %s", esp_err_to_name(adv_ret));
+        } else {
+            ESP_LOGI(TAG, "Advertising restarted after timeout");
+        }
+    }
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "OpenSidekick Camera & Audio Streamer Starting...");
@@ -1204,12 +1261,12 @@ void app_main(void)
 
     // Initialize ESP32 task watchdog with longer timeout for initialization
     esp_task_wdt_config_t twdt_config = {
-        .timeout_ms = 10000,  // Increased to 10 seconds for initialization
+        .timeout_ms = 10000,  // 10 seconds for initialization
         .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,
         .trigger_panic = true
     };
     esp_task_wdt_init(&twdt_config);
-    esp_task_wdt_add(NULL);
+    esp_task_wdt_add(NULL);  // Add main task temporarily for initialization
 
     // Create mutex
     camera_mutex = xSemaphoreCreateMutex();
@@ -1246,22 +1303,22 @@ void app_main(void)
     xTaskCreatePinnedToCore(
         streaming_task,
         "streaming_task",
-        16384,  // Increased to 16KB for H.264 encoding + BLE chunk transmission
+        8192,  // 8KB stack size
         NULL,
-        10,
-        &streaming_task_handle,
-        1
+        5,     // High priority
+        NULL,
+        1      // Pin to core 1
     );
     
-    // Create audio task for microphone handling
+    // Create audio task with dedicated stack
     xTaskCreatePinnedToCore(
         audio_task,
-        "audio_task",
-        8192,   // 8KB stack for audio processing
+        "audio_task", 
+        4096,  // 4KB stack size
         NULL,
-        9,      // Slightly lower priority than streaming
-        &audio_task_handle,
-        0       // Run on core 0
+        4,     // Medium priority
+        NULL,
+        0      // Pin to core 0
     );
     
     ESP_LOGI(TAG, "======================================");
@@ -1271,13 +1328,15 @@ void app_main(void)
     ESP_LOGI(TAG, "Service UUID: %s", BLE_SERVICE_UUID);
     ESP_LOGI(TAG, "======================================");
     
-    // Reset watchdog timeout to normal value after initialization
-    twdt_config.timeout_ms = 5000;  // Back to 5 seconds for normal operation
+    // Remove main task from watchdog - it's not doing critical work
+    esp_task_wdt_delete(NULL);
+    
+    // Reconfigure watchdog for normal operation with shorter timeout for worker tasks
+    twdt_config.timeout_ms = 5000;  // 5 seconds for worker tasks
     esp_task_wdt_init(&twdt_config);
     
-    // Main task just handles watchdog
-    while (1) {
-        esp_task_wdt_reset();
-        vTaskDelay(pdMS_TO_TICKS(1000));
+    // Main loop - just keep the task alive, no watchdog needed
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second delay in main loop
     }
 }

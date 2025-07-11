@@ -4,10 +4,10 @@
 
 The OpenSidekick firmware is built on ESP-IDF (Espressif IoT Development Framework) and provides:
 - High-performance camera capture and streaming
-- PDM microphone audio with G.711 μ-law encoding
 - Optimized BLE 5.0 communication with 517-byte MTU
 - Advanced power management and performance optimization
 - Modular architecture for easy customization
+(PDM microphone audio with G.711 μ-law encoding is WIP)
 
 ## 🏗️ **Architecture**
 
@@ -430,16 +430,5 @@ git pull origin main
 cd firmware
 idf.py build flash
 ```
-
-### **Version Information**
-
-Firmware version is displayed at startup:
-```
-OpenSidekick Camera & Audio Streamer Starting...
-Version: 1.0.0
-Build: Dec 28 2024 15:30:00
-```
-
 ---
-
-**Ready to customize your OpenSidekick firmware? Happy coding! 🚀💻** 
+Happy coding!

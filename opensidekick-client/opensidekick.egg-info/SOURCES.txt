@@ -1,0 +1,16 @@
+MANIFEST.in
+README_Python.md
+requirements.txt
+setup.py
+demos/README.md
+demos/example_camera_usage.py
+demos/opensidekick-web-client.html
+demos/practical_high_res.py
+demos/dog_detection/dog_detector_demo.py
+demos/dog_detection/simple_dog_detector.py
+opensidekick/__init__.py
+opensidekick.egg-info/PKG-INFO
+opensidekick.egg-info/SOURCES.txt
+opensidekick.egg-info/dependency_links.txt
+opensidekick.egg-info/requires.txt
+opensidekick.egg-info/top_level.txt

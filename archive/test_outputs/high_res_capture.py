@@ -24,7 +24,7 @@ import os
 import time
 from datetime import datetime
 from PIL import Image, ImageEnhance, ImageFilter
-from esp32_ble_camera import ESP32Camera, ImageFrame
+from opensidekick import ESP32Camera, ImageFrame
 
 
 class HighResolutionCapture:

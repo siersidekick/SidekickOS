@@ -1,0 +1,6 @@
+include README_Python.md
+include requirements.txt
+include LICENSE
+recursive-include demos *.py *.html *.md
+recursive-exclude demos __pycache__
+recursive-exclude demos *.pyc 
