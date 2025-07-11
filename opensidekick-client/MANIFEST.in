@@ -1,4 +1,4 @@
-include README_Python.md
+include ../docs/python-library.md
 include requirements.txt
 include LICENSE
 recursive-include demos *.py *.html *.md

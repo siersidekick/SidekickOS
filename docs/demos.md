@@ -29,13 +29,6 @@ Basic camera usage examples: single image capture, video streaming, performance 
 python example_camera_usage.py
 ```
 
-**practical_high_res.py**
-High-resolution image capture with intelligent upscaling to 1920x1080.
-
-```bash
-python practical_high_res.py
-```
-
 **opensidekick-web-client.html**
 Web-based camera interface. Open in any web browser and follow instructions to connect.
 

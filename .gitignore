@@ -1,3 +1,43 @@
 build/
 sdkconfig
 sdkconfig.old
+
+# Archive directory
+archive/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Image/video files
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.avi
+cute dogs/
+dog_photos_*/

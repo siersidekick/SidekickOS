@@ -176,12 +176,7 @@ pip install -e .
 python demos/dog_detection/simple_dog_detector.py
 ```
 
-### **High-Resolution Capture**
-```bash
-# Capture and upscale to 1920x1080
-python demos/practical_high_res.py
-# Choose option 2 for full 1920x1080 workflow
-```
+
 
 ## 🛠️ **Development**
 
@@ -267,12 +262,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Uses Seeed Studio XIAO ESP32S3 Sense hardware
 - Community contributions and feedback
 
+## 📚 **Documentation**
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- **[📖 Documentation Index](docs/index.md)** - Complete documentation navigation
+- **[Python Library Guide](docs/python-library.md)** - Complete Python client documentation
+- **[Demo Scripts](docs/demos.md)** - Guide to all demo applications
+- **[Firmware Guide](docs/firmware.md)** - ESP32S3 firmware documentation
+- **[Hardware Setup](docs/hardware.md)** - Hardware compatibility and setup
+- **[Contributing](CONTRIBUTING.md)** - Guidelines for contributors
+
 ## 📞 **Support**
 
-- **Documentation**: See `docs/` directory and client READMEs
 - **Issues**: Open a GitHub issue for bugs or feature requests
 - **Discussions**: Use GitHub Discussions for questions and ideas
-- **Hardware**: Check hardware compatibility in `docs/hardware.md`
+- **Documentation**: See links above for detailed guides
 
 ## 🔮 **Roadmap**
 
