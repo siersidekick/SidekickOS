@@ -11,7 +11,7 @@ An open-source implementation of smart glasses functionality, inspired by the [S
 
 OpenSidekick is an open-source smart glasses platform that provides:
 
-- **📷 High-Resolution Camera Capture** - Up to 1600x1200 native, upscaled to 1920x1080
+- **📷 High-Resolution Camera Capture** - Up to 1600x1200 native
 - **🎤 Audio Streaming** - G.711 μ-law encoded audio over BLE (Work in Progress)
 - **📱 Multi-Platform Clients** - Python API and Web browser interface
 - **⚡ Ultra-Performance** - Optimized BLE 5.0 with 517-byte MTU and Data Length Extension
@@ -249,7 +249,9 @@ pip install -e .
 python demos/dog_detection/simple_dog_detector.py
 ```
 
-Detects dogs and saves photos with bounding boxes.
+Detects dogs and saves photos to "cute dogs" folder.
+
+📹 **[Watch Demo Video](https://drive.google.com/file/d/1LnD9ZVXxRB4CjpYO92vVTl6aJtVk8wdE/view?usp=sharing)** - See dog detection in action!
 
 ## 📄 **License**
 

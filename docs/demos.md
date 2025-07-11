@@ -52,6 +52,22 @@ cd dog_detection
 python dog_detector_demo.py
 ```
 
+### 🎥 Video Demo
+
+**Dog Detection in Action**
+Watch the OpenSidekick dog detection demo in action:
+
+📹 **[Dog Detection Demo Video](https://drive.google.com/file/d/1LnD9ZVXxRB4CjpYO92vVTl6aJtVk8wdE/view?usp=sharing)**
+
+This video demonstrates:
+- Real-time camera streaming from ESP32S3
+- Live dog detection using YOLOv5
+- Clean image saving without bounding boxes
+- Performance monitoring and statistics
+- Bluetooth LE connectivity in action
+
+> **Note**: The video shows the `simple_dog_detector.py` script detecting dogs and automatically saving photos to the "cute dogs" folder.
+
 ## Running Demos
 
 1. Connect your ESP32 camera and make sure it's powered on
