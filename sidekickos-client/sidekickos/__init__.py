@@ -39,7 +39,7 @@ AUDIO_CHAR_UUID = "33333333-4444-5555-6666-777777777777"
 
 # Constants
 MAX_CHUNK_SIZE = 510  # Updated for ultra-speed optimization
-DEVICE_NAME = "SidekickOS"  # Updated device name
+DEVICE_NAME = "ESP32S3-Camera"  # Updated device name
 
 
 @dataclass
@@ -88,6 +88,7 @@ class ESP32Camera:
         self.received_chunks = 0
         self.current_frame_number = 0
         self.is_streaming = False
+        self.completed_image: Optional[ImageFrame] = None  # Store completed image for single capture
         
         # Callbacks
         self.image_callback: Optional[Callable[[ImageFrame], None]] = None
@@ -108,7 +109,7 @@ class ESP32Camera:
         devices = await BleakScanner.discover(timeout=timeout)
         
         # Look for both possible device names
-        possible_names = ["SidekickOS", "Custom-Name-Here"]
+        possible_names = ["SidekickOS", "OpenSidekick", "ESP32S3-Camera"]
         
         for device in devices:
             if device.name:
@@ -182,9 +183,28 @@ class ESP32Camera:
             
             # Start notifications
             logger.info("Starting notifications...")
-            await self.client.start_notify(self.status_char, self._handle_status_data)
-            await self.client.start_notify(self.image_char, self._handle_image_data)
-            await self.client.start_notify(self.frame_char, self._handle_frame_data)
+            
+            # Enable notifications for all characteristics
+            try:
+                await self.client.start_notify(self.status_char, self._handle_status_data)
+                logger.info("✅ Status notifications enabled")
+            except Exception as e:
+                logger.error(f"Failed to enable status notifications: {e}")
+                
+            try:
+                await self.client.start_notify(self.image_char, self._handle_image_data)
+                logger.info("✅ Image notifications enabled")
+            except Exception as e:
+                logger.error(f"Failed to enable image notifications: {e}")
+                
+            try:
+                await self.client.start_notify(self.frame_char, self._handle_frame_data)
+                logger.info("✅ Frame notifications enabled")
+            except Exception as e:
+                logger.error(f"Failed to enable frame notifications: {e}")
+                
+            # Give time for notifications to be properly set up
+            await asyncio.sleep(0.5)
             
             self.connected = True
             self.performance_stats['start_time'] = time.time()
@@ -192,8 +212,12 @@ class ESP32Camera:
             logger.info("🎉 Successfully connected to SidekickOS Ultra-Performance Camera!")
             logger.info(f"⚡ Ready for 517-byte MTU and {MAX_CHUNK_SIZE}-byte chunks")
             
-            # Get initial status
+            # Get initial status after connection is fully established
+            logger.info("📡 Requesting initial status...")
             await self.send_command("STATUS")
+            
+            # Wait a bit for initial status response
+            await asyncio.sleep(1.0)
             
             return True
             
@@ -216,7 +240,7 @@ class ESP32Camera:
         
         try:
             await self.client.write_gatt_char(self.control_char, command.encode())
-            logger.debug(f"Sent command: {command}")
+            logger.info(f"📤 Sent command: {command}")
             return True
         except Exception as e:
             logger.error(f"Failed to send command '{command}': {e}")
@@ -227,35 +251,52 @@ class ESP32Camera:
         logger.info("📷 Capturing image...")
         
         # Set up single image capture
-        self.image_buffer = None
         self.is_streaming = False
+        self.completed_image = None  # Clear any previous completed image
+        self._reset_image_state()
         
         # Send capture command
         if not await self.send_command("CAPTURE"):
             return None
         
+        # Give device time to process command
+        await asyncio.sleep(0.2)
+        
         # Wait for image with timeout
         start_time = time.time()
         while time.time() - start_time < timeout:
-            if self.image_buffer and self.received_chunks >= self.expected_chunks * 0.95:
-                # Image received successfully
-                image_data = bytes(self.image_buffer[:self.expected_size])
-                frame = ImageFrame(
-                    data=image_data,
-                    size=len(image_data),
-                    chunks_received=self.received_chunks,
-                    chunks_expected=self.expected_chunks,
-                    timestamp=time.time(),
-                    frame_number=self.current_frame_number
-                )
-                
-                logger.info(f"✅ Image captured: {len(image_data)} bytes ({frame.completion_rate:.1f}%)")
-                self._reset_image_state()
-                return frame
+            # Check if we have a completed image
+            if self.completed_image:
+                logger.info(f"✅ Image captured: {self.completed_image.size} bytes ({self.completed_image.completion_rate:.1f}%)")
+                return self.completed_image
             
-            # await asyncio.sleep(0.1)
+            # Check if we have received sufficient data (fallback)
+            if self.image_buffer and self.expected_chunks > 0:
+                completion_rate = (self.received_chunks / self.expected_chunks) * 100
+                logger.debug(f"Image progress: {self.received_chunks}/{self.expected_chunks} chunks ({completion_rate:.1f}%)")
+                
+                # Consider image complete if we have most chunks or hit end marker
+                if self.received_chunks >= self.expected_chunks * 0.8:  # Lower threshold
+                    # Image received successfully
+                    image_data = bytes(self.image_buffer[:self.expected_size])
+                    frame = ImageFrame(
+                        data=image_data,
+                        size=len(image_data),
+                        chunks_received=self.received_chunks,
+                        chunks_expected=self.expected_chunks,
+                        timestamp=time.time(),
+                        frame_number=self.current_frame_number
+                    )
+                    
+                    logger.info(f"✅ Image captured: {len(image_data)} bytes ({frame.completion_rate:.1f}%)")
+                    self._reset_image_state()
+                    return frame
+            
+            # Yield control to event loop so BLE notifications can be processed
+            await asyncio.sleep(0.1)
         
         logger.error("⏰ Image capture timeout")
+        logger.error(f"Timeout details: buffer={self.image_buffer is not None}, chunks={self.received_chunks}/{self.expected_chunks}, size={self.expected_size}")
         self._reset_image_state()
         return None
     
@@ -309,7 +350,7 @@ class ESP32Camera:
         """Handle status data from ESP32S3"""
         try:
             status_json = data.decode('utf-8')
-            logger.debug(f"Status: {status_json}")
+            logger.info(f"📡 Status: {status_json}")
             
             if self.status_callback:
                 import json
@@ -318,6 +359,7 @@ class ESP32Camera:
                 
         except Exception as e:
             logger.error(f"Failed to parse status: {e}")
+            logger.debug(f"Raw status data: {data.hex()}")
     
     def _handle_image_data(self, characteristic: BleakGATTCharacteristic, data: bytearray):
         """Handle image data (single captures)"""
@@ -347,10 +389,11 @@ class ESP32Camera:
             self.received_chunks = 0
             self.image_buffer = bytearray(size)
             
-            logger.debug(f"📋 Starting {'frame' if is_frame else 'image'}: {size} bytes ({chunks} chunks)")
+            logger.info(f"📋 Starting {'frame' if is_frame else 'image'}: {size} bytes ({chunks} chunks)")
             
         elif data_type == 0x02:  # Data chunk
             if self.image_buffer is None:
+                logger.warning("Received data chunk but no image buffer initialized")
                 return
             
             chunk_index = (data[1] << 8) | data[2]
@@ -363,23 +406,37 @@ class ESP32Camera:
                 self.image_buffer[offset:offset + len(chunk_data)] = chunk_data
                 self.received_chunks += 1
                 
+                if self.received_chunks % 5 == 0 or self.received_chunks == self.expected_chunks:  # Log every 5 chunks
+                    logger.info(f"📦 Received chunk {self.received_chunks}/{self.expected_chunks}")
+                
                 # Auto-process when all chunks received
                 if self.received_chunks == self.expected_chunks:
+                    logger.info(f"✅ All chunks received! Processing complete image...")
                     self._process_complete_image(is_frame)
+            else:
+                logger.warning(f"Invalid chunk offset: {offset} + {len(chunk_data)} > {len(self.image_buffer)}")
             
         elif data_type == 0x03:  # End marker
-            # Process image if we have sufficient data (95% threshold)
-            if self.image_buffer and self.received_chunks >= self.expected_chunks * 0.95:
+            logger.debug(f"📍 End marker received. Chunks: {self.received_chunks}/{self.expected_chunks}")
+            # Process image if we have any data (end marker means transmission complete)
+            if self.image_buffer and self.received_chunks > 0:
+                logger.info(f"🏁 Image transmission complete via end marker")
                 self._process_complete_image(is_frame)
+        else:
+            logger.warning(f"Unknown data type: 0x{data_type:02x}")
     
     def _process_complete_image(self, is_frame: bool):
         """Process a complete image"""
+        logger.info(f"🔄 Processing complete image (is_frame={is_frame})")
         if not self.image_buffer:
+            logger.warning("⚠️ No image buffer available for processing")
             return
         
         # Create image frame
         image_data = bytes(self.image_buffer[:self.expected_size])
         self.current_frame_number += 1
+        
+        logger.info(f"🖼️ Creating image frame: {len(image_data)} bytes")
         
         frame = ImageFrame(
             data=image_data,
@@ -403,6 +460,11 @@ class ESP32Camera:
                 self.image_callback(frame)
             except Exception as e:
                 logger.error(f"Error in image callback: {e}")
+        
+        # Store completed image for single capture
+        if not is_frame and not self.is_streaming:
+            self.completed_image = frame
+            logger.info(f"💾 Stored completed image for single capture")
         
         self._reset_image_state()
     
