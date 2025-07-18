@@ -32,12 +32,3 @@ Thumbs.db
 *.egg-info/
 dist/
 build/
-
-# Image/video files
-*.jpg
-*.jpeg
-*.png
-*.mp4
-*.avi
-cute dogs/
-dog_photos_*/
