@@ -21,6 +21,12 @@
 #### **Glasses Frame**
 - Any standard eyeglasses frame
 
+#### **3D Printable Mount**
+- **📁 Hardware Files**: Available in [`../hardware/`](../hardware/) directory
+- **🖨️ 3D Print Ready**: STL and 3MF files included
+- **🔧 CAD Model**: STEP file for modifications
+- **📸 Visual Reference**: Front and back render images
+
 ### **Optional Components**
 
 #### **Battery Pack**
@@ -65,24 +71,45 @@ Typical usage with optimized settings: 2-8 hours depending on battery capacity a
 
 ## 🏗️ **Mechanical Design**
 
-### **Mounting Solutions**
+### **3D Printable Mounting Solution**
 
-Hardware mounting solutions and mechanical design are currently in development. This includes:
+**Available Hardware Files:**
+- **CAD Model**: [`../hardware/SidekickOS-ESP32S3-v1.step`](../hardware/SidekickOS-ESP32S3-v1.step) - Full 3D model (STEP format)
+- **3D Print Ready**: 
+  - [`../hardware/SidekickOS-ESP32S3-v1-print.stl`](../hardware/SidekickOS-ESP32S3-v1-print.stl) - STL format
+  - [`../hardware/SidekickOS-ESP32S3-v1-print.3mf`](../hardware/SidekickOS-ESP32S3-v1-print.3mf) - 3MF format (recommended)
 
-- Glasses frame integration options
-- Battery pack mounting solutions
-- Secure camera positioning systems
-- Ergonomic design considerations
+**Hardware Renders:**
+| Front View | Back View |
+|------------|-----------|
+| ![Front Render](../hardware/sidekickos-esp32s3-v1-render-front.png) | ![Back Render](../hardware/sidekickos-esp32s3-v1-render-back.png) |
 
-**Status:** Design and prototyping phase
-**Expected:** Q1 2025 release of mounting hardware and assembly documentation
+### **Mounting Features**
+
+The SidekickOS ESP32S3 v1 mount includes:
+
+- **Glasses Frame Integration**: Designed to clip onto standard eyeglass frames
+- **Secure Camera Positioning**: Optimized positioning for the OV2640 camera sensor
+- **ESP32S3 Housing**: Custom fit for the XIAO ESP32S3 Sense module
+- **Access Ports**: USB-C port access for programming and charging
+
+### **3D Printing Specifications**
+
+**Recommended Settings:**
+- **Layer Height**: 0.2mm
+- **Infill**: 20-30%
+- **Support**: Required for overhangs
+- **Material**: PLA or PETG recommended
+- **Print Orientation**: Follow 3MF file orientation
+
+**Print Time**: Approximately 30 minutes to 1 hour depending on settings
 
 ## 📐 **Dimensions and Clearances**
 
 ### **XIAO ESP32S3 Sense Dimensions**
 - Length: 21mm
-- Width: 17.5mm
-- Height: 7.5mm (with camera)
+- Width: 17.8mm
+- Height: 15mm (with camera)
 - Weight: ~5g
 
 ### **Mounting Clearances**
@@ -93,22 +120,43 @@ Hardware mounting solutions and mechanical design are currently in development. 
 
 ## 🔧 **Assembly Instructions**
 
-### **Current Status**
+### **3D Printing the Mount**
 
-Assembly instructions and mounting solutions are currently in development.
+1. **Download Files**: Get the 3D print files from the [`../hardware/`](../hardware/) directory
+2. **Print Settings**: Use the recommended settings above (0.2mm layer height, 20-30% infill)
+3. **Support Material**: Enable supports for overhangs
+4. **Post-Processing**: Remove supports and sand rough edges if needed
 
-**Available Now:**
-- Firmware flashing and testing procedures
-- Basic ESP32S3 functionality verification
-- Software setup and configuration
+### **Hardware Assembly**
 
-**Coming Soon:**
-- Complete assembly documentation
-- Mounting hardware designs
-- Step-by-step integration guides
-- Safety and ergonomic considerations
+**Step 1: Prepare the ESP32S3**
+1. Flash the SidekickOS firmware to your XIAO ESP32S3 Sense
+2. Test basic functionality using the serial monitor
+3. Verify camera and BLE functionality
 
-For now, focus on firmware development and software testing using the ESP32S3 in a development setup.
+**Step 2: Mount Assembly**
+1. Carefully insert the ESP32S3 Sense into the 3D printed mount
+2. Ensure the camera lens aligns with the mount opening
+3. Verify USB-C port accessibility for charging/programming
+4. Check that the mount securely holds the device
+
+**Step 3: Glasses Integration**
+1. Identify the best mounting position on your glasses frame
+2. Clip or attach the mount to the glasses frame
+3. Ensure the camera has an unobstructed view
+4. Test comfort and stability during movement
+
+**Step 4: Final Testing**
+1. Connect via Python or Web client
+2. Test camera capture and streaming
+3. Verify comfortable fit during extended wear
+4. Adjust mounting position if needed
+
+### **Tools Required**
+- 3D printer (or access to 3D printing service)
+- Basic hand tools for post-processing
+- Your favorite glasses frame
+- XIAO ESP32S3 Sense module
 
 ## 🛡️ **Safety Considerations**
 

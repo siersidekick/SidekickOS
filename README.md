@@ -1,5 +1,7 @@
 # SidekickOS - Open Source Smart Glasses
 
+![SidekickOS Landing](docs/SidekickOS_landing.jpeg)
+
 An open-source implementation of smart glasses functionality, inspired by the [SIER Sidekick](https://siertech.com). Transform any glasses into smart glasses with camera capture, audio streaming, and AI assistance capabilities.
 
 ![SidekickOS Demo](https://img.shields.io/badge/Status-Active%20Development-green)
@@ -37,7 +39,18 @@ This project is developed in collaboration with [SIER Technologies](https://sier
 - XIAO ESP32S3 Sense (with camera and microphone)
 - USB-C cable for programming
 
-**Note:** Hardware mounting solutions and assembly instructions are currently being developed.
+**3D Printable Hardware:**
+- **CAD Model**: [`hardware/SidekickOS-ESP32S3-v1.step`](hardware/SidekickOS-ESP32S3-v1.step) - Full 3D model for modifications
+- **3D Print Files**: 
+  - [`hardware/SidekickOS-ESP32S3-v1-print.stl`](hardware/SidekickOS-ESP32S3-v1-print.stl) - STL format
+  - [`hardware/SidekickOS-ESP32S3-v1-print.3mf`](hardware/SidekickOS-ESP32S3-v1-print.3mf) - 3MF format (recommended)
+
+**Hardware Renders:**
+| Front View | Back View |
+|------------|-----------|
+| ![Front Render](hardware/sidekickos-esp32s3-v1-render-front.png) | ![Back Render](hardware/sidekickos-esp32s3-v1-render-back.png) |
+
+**Note:** 3D printable mounting solution now available! See [`docs/hardware.md`](docs/hardware.md) for complete assembly instructions.
 
 ### **2. Firmware Installation**
 
