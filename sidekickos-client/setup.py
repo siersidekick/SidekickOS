@@ -15,7 +15,7 @@ setup(
     description="Python library for ESP32S3 BLE camera interface",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/henrywarren/SidekickOS",
+    url="https://github.com/siersidekick/SidekickOS",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -35,8 +35,8 @@ setup(
     install_requires=requirements,
     keywords="esp32 camera ble bluetooth image capture opencv",
     project_urls={
-        "Bug Reports": "https://github.com/henrywarren/SidekickOS/issues",
-        "Source": "https://github.com/henrywarren/SidekickOS",
-        "Documentation": "https://github.com/henrywarren/SidekickOS/blob/main/README.md",
+        "Bug Reports": "https://github.com/siersidekick/SidekickOS/issues",
+        "Source": "https://github.com/siersidekick/SidekickOS",
+        "Documentation": "https://github.com/siersidekick/SidekickOS/blob/main/README.md",
     },
 ) 
